@@ -149,23 +149,16 @@
           "5090": "biology", "2210": "computer-science", "2281": "economics", "7115": "business-studies"
         };
         
-        // Strictly map the single letter to the folder name the website uses
-        const folderSeasons = { 
-            "m": "march", 
-            "s": "may-june", 
-            "w": "october-november" 
-        };
+        const folderSeasons = { "m": "march", "s": "may-june", "w": "october-november" };
         
         let levelFolder = "a-level";
         if (sub.startsWith('0')) { levelFolder = "igcse"; } 
         else if (/^[2457]/.test(sub)) { levelFolder = "o-level"; }
         
         const folderName = subjectNames[sub] || "subject";
-        const seasonFolderWord = folderSeasons[seas] || "may-june"; // Fallback to may-june if undefined
+        const seasonFolderWord = folderSeasons[seas] || "may-june";
         const fullYear = `20${yr}`;
         
-        // Exact structure matching your working link:
-        // https://pastpapers.co/api/file/caie/a-level/mathematics-9709/2025-may-june/9709_s25_ms_12.pdf
         return `https://pastpapers.co/api/file/caie/${levelFolder}/${folderName}-${sub}/${fullYear}-${seasonFolderWord}/${sub}_${seas}${yr}_ms_${pap}.pdf`;
       }
     },
@@ -184,7 +177,8 @@
         };
         const subjectId = paperstackSubjectIds[sub] || "3"; 
 
-        return `https://app.paperstack.cc/${levelFolder}/subject${subjectId}/pdf/${sub}_${seas}${yr}_ms_${pap}`;
+        // Fixed: Strictly formats with underscores and appends .pdf
+        return `https://app.paperstack.cc/${levelFolder}/subject${subjectId}/pdf/${sub}_${seas}${yr}_ms_${pap}.pdf`;
       }
     }
   ];
