@@ -137,30 +137,16 @@
   // ==========================================
   const paperSources = [
     {
-      name: "XtraPapers",
+      {
+      name: "Paperstack",
       buildUrl: (sub, yr, seas, pap) => {
-        const subjectNames = {
-          "9709": "mathematics", "9702": "physics", "9701": "chemistry", "9700": "biology",
-          "9618": "computer-science", "9708": "economics", "9706": "accounting", "9609": "business",
-          "0580": "mathematics", "0625": "physics", "0620": "chemistry", "0610": "biology",
-          "0478": "computer-science", "0455": "economics", "0452": "accounting", "0985": "accounting",
-          "0450": "business-studies",
-          "7707": "accounting", "4024": "mathematics-d", "5054": "physics", "5070": "chemistry",
-          "5090": "biology", "2210": "computer-science", "2281": "economics", "7115": "business-studies"
-        };
-        const seasonNames = { "m": "march", "s": "may-june", "w": "october-november" };
-        
-        let levelFolder = "as-and-a-level";
+        let levelFolder = "a_level";
         if (sub.startsWith('0')) { levelFolder = "igcse"; } 
         else if (/^[2457]/.test(sub)) { levelFolder = "o-level"; }
-        
-        const folderName = subjectNames[sub] || "subject";
-        const seasonWord = seasonNames[seas] || seas;
-        const fullYear = `20${yr}`;
-        
-        // Switched to _qp_ and added /raw suffix to pull down data stream natively
-        return `https://xtrapapers.co/papers/caie/${levelFolder}/${folderName}-${sub}/${fullYear}-${seasonWord}/${sub}_${seas}${yr}_qp_${pap}.pdf/raw`;
+
+        return `https://app.paperstack.cc/${levelFolder}/subject3/pdf/${sub}_${seas}${yr}_qp_${pap}`;
       }
+    }    
     },
     {
       name: "BestExamHelp",
