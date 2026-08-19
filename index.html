@@ -149,21 +149,24 @@
           "5090": "biology", "2210": "computer-science", "2281": "economics", "7115": "business-studies"
         };
         
-        // PastPapers.co separates directory season names from file season names
-        const folderSeasons = { "m": "march", "s": "may-june", "w": "october-november" };
-        const fileSeasons = { "m": "march", "s": "june", "w": "november" };
+        // Strictly map the single letter to the folder name the website uses
+        const folderSeasons = { 
+            "m": "march", 
+            "s": "may-june", 
+            "w": "october-november" 
+        };
         
         let levelFolder = "a-level";
         if (sub.startsWith('0')) { levelFolder = "igcse"; } 
         else if (/^[2457]/.test(sub)) { levelFolder = "o-level"; }
         
         const folderName = subjectNames[sub] || "subject";
-        const seasonFolderWord = folderSeasons[seas] || seas;
-        const seasonFileWord = fileSeasons[seas] || seas;
+        const seasonFolderWord = folderSeasons[seas] || "may-june"; // Fallback to may-june if undefined
         const fullYear = `20${yr}`;
         
-        // Matches exact structure: .../2026-may-june/9709-mathematics-june-2026-mark-scheme-12.pdf
-        return `https://pastpapers.co/api/file/caie/${levelFolder}/${folderName}-${sub}/${fullYear}-${seasonFolderWord}/${sub}-${folderName}-${seasonFileWord}-${fullYear}-mark-scheme-${pap}.pdf`;
+        // Exact structure matching your working link:
+        // https://pastpapers.co/api/file/caie/a-level/mathematics-9709/2025-may-june/9709_s25_ms_12.pdf
+        return `https://pastpapers.co/api/file/caie/${levelFolder}/${folderName}-${sub}/${fullYear}-${seasonFolderWord}/${sub}_${seas}${yr}_ms_${pap}.pdf`;
       }
     },
     {
@@ -327,24 +330,29 @@
     // Clean URL encoding to prevent space errors
     const sanitizedUrl = encodeURI(targetUrl.trim());
 
+    // A beefed-up list of proxies. Some handle redirects better, some bypass bots better.
     const proxies = [
       `https://corsproxy.io/?${encodeURIComponent(sanitizedUrl)}`,
-      `https://api.allorigins.win/raw?url=${encodeURIComponent(sanitizedUrl)}`
+      `https://api.allorigins.win/raw?url=${encodeURIComponent(sanitizedUrl)}`,
+      `https://thingproxy.freeboard.io/fetch/${sanitizedUrl}`,
+      `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(sanitizedUrl)}`,
+      `https://cors-anywhere.herokuapp.com/${sanitizedUrl}` // Fallback
     ];
 
     let lastError = null;
     for (let i = 0; i < proxies.length; i++) {
       try {
         console.log(`⏳ Trying proxy node ${i + 1}...`);
+        
         const response = await fetch(proxies[i]);
         if (!response.ok) throw new Error(`HTTP status error: ${response.status}`);
         
         const buffer = await response.arrayBuffer();
         const bytes = new Uint8Array(buffer);
         
-        // Check PDF header signature (%PDF)
+        // Magic Byte Check: MUST start with %PDF
         if (bytes.length < 5 || bytes[0] !== 0x25 || bytes[1] !== 0x50 || bytes[2] !== 0x44 || bytes[3] !== 0x46) {
-           throw new Error("Target returned HTML instead of a valid PDF (404 / File not found).");
+           throw new Error("Proxy was blocked by Cloudflare or caught in an HTML redirect loop.");
         }
 
         const task = pdfjsLib.getDocument({ data: bytes });
@@ -356,9 +364,8 @@
         lastError = e;
       }
     }
-    throw lastError || new Error("All proxy pathways rejected file package stream.");
+    throw lastError || new Error("All proxy pathways blocked by target website.");
   }
-
   async function runNativeRenderPipeline() {
     const sub = document.getElementById('sub-input').value.trim();
     const yr = document.getElementById('yr-input').value.trim();
