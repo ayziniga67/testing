@@ -142,11 +142,24 @@
     {
       name: "Paperstack",
       buildUrl: (sub, yr, seas, pap) => {
-        let levelFolder = "a_level";
+        let levelFolder = "a_levels"; // Fixed to a_levels
         if (sub.startsWith('0')) { levelFolder = "igcse"; } 
         else if (/^[2457]/.test(sub)) { levelFolder = "o-level"; }
 
-        return `https://app.paperstack.cc/${levelFolder}/subject3/pdf/${sub}_${seas}${yr}_qp_${pap}`;
+        // Map CAIE subject codes to Paperstack's internal IDs
+        const paperstackSubjectIds = {
+          "9701": "1", // Your mapping (Note: 9701 is usually Chem, but mapped to 1 as requested)
+          "9709": "1", // Added standard Math 9709 just in case
+          "9618": "2", // Computer Science
+          "9702": "3"  // Physics
+          // You can easily add more subjects here later!
+        };
+        
+        // Defaults to "3" if the subject isn't found in the list above
+        const subjectId = paperstackSubjectIds[sub] || "3"; 
+
+        // Switched _qp_ to _ms_
+        return `https://app.paperstack.cc/${levelFolder}/subject${subjectId}/pdf/${sub}_${seas}${yr}_ms_${pap}`;
       }
     },
     {
@@ -171,7 +184,8 @@
         const seasonWord = seasonNames[seas] || seas;
         const fullYear = `20${yr}`;
         
-        return `https://pastpapers.co/api/file/caie/${levelFolder}/${folderName}-${sub}/${fullYear}-${seasonWord}/${sub}-${folderName}-${seasonWord}-${fullYear}-question-paper-${pap}.pdf`;
+        // Switched 'question-paper' to 'mark-scheme'
+        return `https://pastpapers.co/api/file/caie/${levelFolder}/${folderName}-${sub}/${fullYear}-${seasonWord}/${sub}-${folderName}-${seasonWord}-${fullYear}-mark-scheme-${pap}.pdf`;
       }
     }
   ];
