@@ -332,24 +332,46 @@
       `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetUrl)}`
     ];
 
+    // FIXED: Added Magic Byte checking to prevent HTML/Cloudflare pages from crashing pdf.js
+  async function fetchPDFResilient(targetUrl) {
+    console.log("🎯 TARGET URL:", targetUrl); // Check your F12 console to see if this URL is correct!
+    
+    const proxies = [
+      `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`,
+      `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`,
+      `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetUrl)}`
+    ];
+
     let lastError = null;
     for (let i = 0; i < proxies.length; i++) {
       try {
+        console.log(`⏳ Trying proxy node ${i + 1}...`);
         const response = await fetch(proxies[i]);
-        if (!response.ok) throw new Error(`HTTP status code error: ${response.status}`);
+        
+        if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
         
         const buffer = await response.arrayBuffer();
-        const task = pdfjsLib.getDocument({ data: new Uint8Array(buffer) });
+        const bytes = new Uint8Array(buffer);
+        
+        // CRITICAL CHECK: Ensure the file actually starts with %PDF (Hex: 25 50 44 46)
+        // If it doesn't, the proxy returned a 404 HTML page or a Cloudflare block.
+        if (bytes.length < 5 || bytes[0] !== 0x25 || bytes[1] !== 0x50 || bytes[2] !== 0x44 || bytes[3] !== 0x46) {
+           throw new Error("Proxy returned HTML/Text instead of a valid PDF (Likely a 404 or Cloudflare block).");
+        }
+
+        const task = pdfjsLib.getDocument({ data: bytes });
         const pdf = await task.promise;
+        
+        console.log(`✅ Success via proxy ${i + 1}`);
         return pdf;
+        
       } catch (e) {
-        console.warn(`Proxy node ${i + 1} bypassed:`, e);
+        console.warn(`❌ Proxy ${i + 1} failed:`, e.message);
         lastError = e;
       }
     }
-    throw lastError || new Error("All proxy pathways rejected file package stream.");
+    throw lastError || new Error("All proxy pathways rejected the file.");
   }
-
   async function runNativeRenderPipeline() {
     const sub = document.getElementById('sub-input').value.trim();
     const yr = document.getElementById('yr-input').value.trim();
