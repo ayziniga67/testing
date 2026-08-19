@@ -135,9 +135,11 @@
   // ==========================================
   // CENTRALIZABLE FALLBACK PAPERS REGISTRY
   // ==========================================
+// ==========================================
+  // CENTRALIZABLE FALLBACK PAPERS REGISTRY
+  // ==========================================
   const paperSources = [
     {
-      {
       name: "Paperstack",
       buildUrl: (sub, yr, seas, pap) => {
         let levelFolder = "a_level";
@@ -146,10 +148,9 @@
 
         return `https://app.paperstack.cc/${levelFolder}/subject3/pdf/${sub}_${seas}${yr}_qp_${pap}`;
       }
-    }    
     },
     {
-      name: "BestExamHelp",
+      name: "PastPapers.co",
       buildUrl: (sub, yr, seas, pap) => {
         const subjectNames = {
           "9709": "mathematics", "9702": "physics", "9701": "chemistry", "9700": "biology",
@@ -160,23 +161,17 @@
           "7707": "accounting", "4024": "mathematics-d", "5054": "physics", "5070": "chemistry",
           "5090": "biology", "2210": "computer-science", "2281": "economics", "7115": "business-studies"
         };
+        const seasonNames = { "m": "march", "s": "may-june", "w": "october-november" };
         
-        let levelFolder = "cambridge-international-a-level";
-        if (sub.startsWith('0')) { levelFolder = "cambridge-igcse"; } 
-        else if (/^[2457]/.test(sub)) { levelFolder = "cambridge-o-level"; }
-
+        let levelFolder = "a-level";
+        if (sub.startsWith('0')) { levelFolder = "igcse"; } 
+        else if (/^[2457]/.test(sub)) { levelFolder = "o-level"; }
+        
         const folderName = subjectNames[sub] || "subject";
+        const seasonWord = seasonNames[seas] || seas;
         const fullYear = `20${yr}`;
         
-        // Switched from _ms_ to _qp_
-        return `https://bestexamhelp.com/exam/${levelFolder}/${folderName}-${sub}/${fullYear}/${sub}_${seas}${yr}_qp_${pap}.pdf`;
-      }
-    },
-    {
-      name: "PapaCambridge",
-      buildUrl: (sub, yr, seas, pap) => {
-        // Switched from _ms_ to _qp_
-        return `https://pastpapers.papacambridge.com/directories/CAIE/CAIE-pastpapers/upload/${sub}_${seas}${yr}_qp_${pap}.pdf`;
+        return `https://pastpapers.co/api/file/caie/${levelFolder}/${folderName}-${sub}/${fullYear}-${seasonWord}/${sub}-${folderName}-${seasonWord}-${fullYear}-question-paper-${pap}.pdf`;
       }
     }
   ];
