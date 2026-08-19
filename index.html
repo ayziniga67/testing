@@ -135,30 +135,22 @@
   // ==========================================
   // CENTRALIZABLE FALLBACK PAPERS REGISTRY
   // ==========================================
-// ==========================================
-  // CENTRALIZABLE FALLBACK PAPERS REGISTRY
-  // ==========================================
   const paperSources = [
     {
       name: "Paperstack",
       buildUrl: (sub, yr, seas, pap) => {
-        let levelFolder = "a_levels"; // Fixed to a_levels
+        let levelFolder = "a_levels"; 
         if (sub.startsWith('0')) { levelFolder = "igcse"; } 
         else if (/^[2457]/.test(sub)) { levelFolder = "o-level"; }
 
-        // Map CAIE subject codes to Paperstack's internal IDs
         const paperstackSubjectIds = {
-          "9701": "1", // Your mapping (Note: 9701 is usually Chem, but mapped to 1 as requested)
-          "9709": "1", // Added standard Math 9709 just in case
-          "9618": "2", // Computer Science
-          "9702": "3"  // Physics
-          // You can easily add more subjects here later!
+          "9701": "1", 
+          "9709": "1", 
+          "9618": "2", 
+          "9702": "3"  
         };
-        
-        // Defaults to "3" if the subject isn't found in the list above
         const subjectId = paperstackSubjectIds[sub] || "3"; 
 
-        // Switched _qp_ to _ms_
         return `https://app.paperstack.cc/${levelFolder}/subject${subjectId}/pdf/${sub}_${seas}${yr}_ms_${pap}`;
       }
     },
@@ -184,7 +176,6 @@
         const seasonWord = seasonNames[seas] || seas;
         const fullYear = `20${yr}`;
         
-        // Switched 'question-paper' to 'mark-scheme'
         return `https://pastpapers.co/api/file/caie/${levelFolder}/${folderName}-${sub}/${fullYear}-${seasonWord}/${sub}-${folderName}-${seasonWord}-${fullYear}-mark-scheme-${pap}.pdf`;
       }
     }
@@ -324,17 +315,9 @@
     await runNativeRenderPipeline();
   }
 
-  // FIXED: Patched array buffer stream extractor to bypass proxy range-request blocks
+  // FIXED: Magic Bytes Checker & Safe Proxy Array
   async function fetchPDFResilient(targetUrl) {
-    const proxies = [
-      `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`,
-      `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`,
-      `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetUrl)}`
-    ];
-
-    // FIXED: Added Magic Byte checking to prevent HTML/Cloudflare pages from crashing pdf.js
-  async function fetchPDFResilient(targetUrl) {
-    console.log("🎯 TARGET URL:", targetUrl); // Check your F12 console to see if this URL is correct!
+    console.log("🎯 TARGET URL:", targetUrl);
     
     const proxies = [
       `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`,
@@ -347,31 +330,27 @@
       try {
         console.log(`⏳ Trying proxy node ${i + 1}...`);
         const response = await fetch(proxies[i]);
-        
-        if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+        if (!response.ok) throw new Error(`HTTP status error: ${response.status}`);
         
         const buffer = await response.arrayBuffer();
         const bytes = new Uint8Array(buffer);
         
-        // CRITICAL CHECK: Ensure the file actually starts with %PDF (Hex: 25 50 44 46)
-        // If it doesn't, the proxy returned a 404 HTML page or a Cloudflare block.
         if (bytes.length < 5 || bytes[0] !== 0x25 || bytes[1] !== 0x50 || bytes[2] !== 0x44 || bytes[3] !== 0x46) {
-           throw new Error("Proxy returned HTML/Text instead of a valid PDF (Likely a 404 or Cloudflare block).");
+           throw new Error("Proxy returned HTML instead of a valid PDF (Likely a 404).");
         }
 
         const task = pdfjsLib.getDocument({ data: bytes });
         const pdf = await task.promise;
-        
         console.log(`✅ Success via proxy ${i + 1}`);
         return pdf;
-        
       } catch (e) {
         console.warn(`❌ Proxy ${i + 1} failed:`, e.message);
         lastError = e;
       }
     }
-    throw lastError || new Error("All proxy pathways rejected the file.");
+    throw lastError || new Error("All proxy pathways rejected file package stream.");
   }
+
   async function runNativeRenderPipeline() {
     const sub = document.getElementById('sub-input').value.trim();
     const yr = document.getElementById('yr-input').value.trim();
@@ -379,33 +358,28 @@
     const pap = document.getElementById('pap-input').value.trim();
     const targetQ = document.getElementById('q-input').value.trim() || "1";
 
-    // CLIENT-SIDE INPUT VALIDATION ENGINE (Allows leading zeros for IGCSE papers)
     if (!/^\d{4}$/.test(sub)) {
       alert("Validation Error:\nSubject must be exactly 4 numeric digits (e.g., 0580 or 9702).");
-      overlay.style.display = 'none';
       return;
     }
     if (!/^\d{2}$/.test(yr)) {
       alert("Validation Error:\nYear must be exactly 2 numeric digits (e.g., 25).");
-      overlay.style.display = 'none';
       return;
     }
     if (!/^[swm]$/i.test(seas)) {
       alert("Validation Error:\nSeries must be a single letter: 's' (Summer), 'w' (Winter), or 'm' (March).");
-      overlay.style.display = 'none';
       return;
     }
     if (!/^\d{2}$/.test(pap)) {
       alert("Validation Error:\nPaper must be exactly 2 numeric digits (e.g., 12).");
-      overlay.style.display = 'none';
       return;
     }
     if (!/^\d{1,2}$/.test(targetQ) || parseInt(targetQ, 10) <= 0) {
       alert("Validation Error:\nTarget Question must be a positive integer value between 1 and 99.");
-      overlay.style.display = 'none';
       return;
     }
 
+    overlay.style.display = 'flex';
     document.getElementById('viewer-wrap').style.display = 'block';
     document.getElementById('paper-id').innerText = `${sub} | ${seas.toUpperCase()}${yr} | P${pap} | Q${targetQ}`;
     
@@ -434,9 +408,7 @@
       }
     }, 10000);
     
-    // CASCADING MULTI-SOURCE ACQUISITION SYSTEM
     currentPdf = null; 
-    let successfulUrl = "";
 
     for (let i = 0; i < paperSources.length; i++) {
       const source = paperSources[i];
@@ -445,28 +417,24 @@
       
       try {
         currentPdf = await fetchPDFResilient(generatedUrl);
-        successfulUrl = generatedUrl;
         break; 
       } catch (e) {
-        console.warn(`Fallback: ${source.name} failed. Advancing network pointer...`);
+        console.warn(`Fallback: ${source.name} failed.`);
       }
     }
 
     if (!currentPdf) {
       clearInterval(loadingInterval);
       document.getElementById('match-status').innerText = "Load Failed";
-      alert(`Could not find document anywhere.\n\nTried all registered web databases but encountered 404 or connection failures.`);
+      alert(`Could not find document anywhere.\n\nOpen F12 Console to see exactly why it failed.`);
       overlay.style.display = 'none';
       return;
     }
 
     try {
-      let matchedPage = 1; // Fallback to page 1 if dynamic logic matches nothing
+      let matchedPage = 1; 
       let foundMatch = false;
 
-      // ========================================================
-      // STEP 1: SEQUENCE COLUMN EXTRACTION ENGINE
-      // ========================================================
       for (let i = 1; i <= currentPdf.numPages; i++) {
         if (foundMatch) break;
         const page = await currentPdf.getPage(i);
@@ -478,7 +446,6 @@
           .join(' ')
           .toUpperCase(); 
         
-        // Hard bypass for instruction / rubric / metadata pages
         if (fullPageText.includes("ANNOTATION") || 
             fullPageText.includes("ABBREVIATION") || 
             fullPageText.includes("SPECIFIC MARKING INSTRUCTIONS") ||
@@ -514,7 +481,6 @@
         }
       }
 
-      // SETUP INTERSECTION OBSERVER
       scrollObserver = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
           if (entry.isIntersecting) {
@@ -525,7 +491,6 @@
         });
       }, { root: track, threshold: 0.1, rootMargin: "50px 0px" });
 
-      // CONSTRUCT STRUCTURAL SHELLS
       for (let i = 1; i <= currentPdf.numPages; i++) {
         const navBtn = document.createElement('button');
         navBtn.className = 'nav-jump-btn' + (i === matchedPage ? ' active' : '');
@@ -580,7 +545,7 @@
       if (placeholder) placeholder.remove();
       section.appendChild(pageCanvas);
     } catch (e) {
-      console.error(`Dynamic viewport painting error on page ${pageNum}:`, e);
+      console.error(`Dynamic viewport error on page ${pageNum}:`, e);
     }
   }
 
