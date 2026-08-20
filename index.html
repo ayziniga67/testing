@@ -1,4 +1,3 @@
-```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -18,6 +17,7 @@
     .header h1 { font-family: 'Montserrat', sans-serif; font-size: 1.4rem; letter-spacing: 2px; font-weight:400 }
     .header h2 { font-family: 'Montserrat', sans-serif; font-size: 0.8rem; letter-spacing: 2px; font-weight:200 }
 
+    /* Structural Input Controls Dashboard */
     .settings-bar { width: 100%; background: var(--card); padding: 10px; border-radius: 12px; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.05); }
     .input-row { display: flex; justify-content: space-between; gap: 6px; width: 100%; }
     .input-group { display: flex; flex-direction: column; align-items: center; gap: 2px; flex: 1; }
@@ -34,28 +34,30 @@
         
     .btn-reset { background: #ea580c; color: white; font-size: 0.85rem; grid-column: span 2; }
     .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
-    .btn { padding: 14px; border-radius: 10px; border: none; font-weight: 400; cursor: pointer; transition: 0.2s; text-decoration: none; text-align: center; display: inline-block; }
+    .btn { padding: 14px; border-radius: 10px; border: none; font-weight: 400; cursor: pointer; transition: 0.2s; }
     .btn-main { background: var(--accent); color: #0f172a; grid-column: span 2; font-size: 1rem; }
     .btn-sub { background: #334155; color: white; font-size: 0.6rem; }
-    .btn-fallback { background: #10b981; color: #0f172a; font-size: 0.85rem; font-weight: 700; display: none; margin-top: 10px; width: 100%; }
 
     #log { font-size: 0.8rem; color: #94a3b8; text-align: center; margin-bottom: 5px; }
-    #error-banner { display: none; width: 100%; background: rgba(239, 68, 68, 0.15); border: 1px solid #ef4444; color: #fca5a5; font-size: 0.75rem; padding: 8px 12px; border-radius: 8px; margin-bottom: 12px; text-align: center; font-weight: 600; }
     #debug-read { display: none; font-size: 0.6rem; color: #475569; text-align: center; margin-bottom: 10px; font-family: monospace; overflow: hidden; height: 12px; }
     
+    /* Native Document Display Workspace */
     .viewer-wrap { display: none; width: 100%; margin-top: 10px; background: var(--card); border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); padding: 12px; }
     #info-bar { display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; margin-bottom: 10px; padding: 0 4px; }
     
+    /* Horizontal Navigation Picker Bar */
     #pdf-nav-bar { width: 100%; display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 12px; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; }
     #pdf-nav-bar::-webkit-scrollbar { height: 4px; }
     #pdf-nav-bar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
     .nav-jump-btn { background: var(--nav-btn); color: white; border: none; padding: 6px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; cursor: pointer; flex-shrink: 0; transition: 0.2s; }
     .nav-jump-btn.active { background: var(--accent); color: #0f172a; }
 
+    /* Strict 1-Page Native CSS Scroll Snap-Track Viewport */
     #pdf-sections-track { width: 100%; height: 520px; display: flex; flex-direction: column; gap: 0px; overflow-y: scroll; scroll-snap-type: y mandatory; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; border-radius: 8px; background: #0f172a; border: 1px solid rgba(255,255,255,0.1); }
     .page-section { width: 100%; height: 100%; min-height: 100%; scroll-snap-align: start; scroll-snap-stop: always; flex-shrink: 0; position: relative; display: flex; align-items: center; justify-content: center; background: #0f172a; overflow: hidden; }
     .page-badge { position: absolute; top: 12px; left: 12px; background: rgba(15, 23, 42, 0.85); color: var(--accent); font-size: 0.65rem; font-weight: 700; padding: 4px 8px; border-radius: 4px; z-index: 10; border: 1px solid rgba(255,255,255,0.05); }
     
+    /* Layout Canvas Scaling Rules */
     .page-section canvas { max-width: 100%; max-height: 100%; width: auto; height: auto; display: block; background: white; image-rendering: -webkit-optimize-contrast; }
     .loading-placeholder { font-size: 0.8rem; color: #475569; font-weight: 400; text-transform: uppercase; letter-spacing: 0.5px; animation: pulse 1.5s infinite; }
     @keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.9; } }
@@ -98,8 +100,6 @@
     </div>
   </div>
 
-  <div id="error-banner"></div>
-
    <div id="media-box">
     <video id="video" autoplay playsinline muted style="display:none;"></video>
     <canvas id="canvas" style="display:none;"></canvas>
@@ -119,8 +119,6 @@
     <button class="btn btn-sub btn-reset" onclick="resetCameraSystem()">START/RESET CAMERA</button>
   </div>
 
-  <a id="papacambridge-fallback" class="btn btn-fallback" target="_blank" href="#">OPEN MARKING SCHEME PDF (PAPACAMBRIDGE)</a>
-
   <div class="viewer-wrap" id="viewer-wrap">
     <div id="info-bar">
         <span id="paper-id" style="color:var(--accent); font-weight:bold;"></span>
@@ -134,20 +132,23 @@
 <script>
   pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
   
-  const subjectNames = {
-    "9709": "mathematics", "9702": "physics", "9701": "chemistry", "9700": "biology",
-    "9618": "computer-science", "9708": "economics", "9706": "accounting", "9609": "business",
-    "0580": "mathematics", "0625": "physics", "0620": "chemistry", "0610": "biology",
-    "0478": "computer-science", "0455": "economics", "0452": "accounting", "0985": "accounting",
-    "0450": "business-studies",
-    "7707": "accounting", "4024": "mathematics-d", "5054": "physics", "5070": "chemistry",
-    "5090": "biology", "2210": "computer-science", "2281": "economics", "7115": "business-studies"
-  };
-
+  // ==========================================
+  // UPDATED SOURCES (PastPapers.co REMOVED)
+  // ==========================================
   const paperSources = [
     {
       name: "BestExamHelp",
       buildUrl: (sub, yr, seas, pap) => {
+        const subjectNames = {
+          "9709": "mathematics", "9702": "physics", "9701": "chemistry", "9700": "biology",
+          "9618": "computer-science", "9708": "economics", "9706": "accounting", "9609": "business",
+          "0580": "mathematics", "0625": "physics", "0620": "chemistry", "0610": "biology",
+          "0478": "computer-science", "0455": "economics", "0452": "accounting", "0985": "accounting",
+          "0450": "business-studies",
+          "7707": "accounting", "4024": "mathematics-d", "5054": "physics", "5070": "chemistry",
+          "5090": "biology", "2210": "computer-science", "2281": "economics", "7115": "business-studies"
+        };
+        
         let levelFolder = "cambridge-international-a-level";
         if (sub.startsWith('0') || sub === '0985') { levelFolder = "cambridge-igcse"; } 
         else if (/^[2457]/.test(sub)) { levelFolder = "cambridge-o-level"; }
@@ -157,6 +158,29 @@
         
         return `https://bestexamhelp.com/exam/${levelFolder}/${folderName}-${sub}/${fullYear}/${sub}_${seas}${yr}_ms_${pap}.pdf`;
       }
+    },
+    {
+      name: "GCE Guide",
+      buildUrl: (sub, yr, seas, pap) => {
+        const subjectNames = {
+          "9709": "Mathematics", "9702": "Physics", "9701": "Chemistry", "9700": "Biology",
+          "9618": "Computer Science", "9708": "Economics", "9706": "Accounting", "9609": "Business",
+          "0580": "Mathematics", "0625": "Physics", "0620": "Chemistry", "0610": "Biology",
+          "0478": "Computer Science", "0455": "Economics", "0452": "Accounting", "0985": "Accounting",
+          "0450": "Business Studies",
+          "7707": "Accounting", "4024": "Mathematics D (Calculator Version)", "5054": "Physics", "5070": "Chemistry",
+          "5090": "Biology", "2210": "Computer Science", "2281": "Economics", "7115": "Business Studies"
+        };
+        
+        let levelFolder = "A%20Levels";
+        if (sub.startsWith('0') || sub === '0985') { levelFolder = "IGCSE"; } 
+        else if (/^[2457]/.test(sub)) { levelFolder = "O%20Levels"; }
+        
+        const folderName = subjectNames[sub] ? encodeURIComponent(subjectNames[sub]) : "Subject";
+        const fullYear = `20${yr}`;
+        
+        return `https://papers.gceguide.cc/${levelFolder}/${folderName}%20(${sub})/${fullYear}/${sub}_${seas}${yr}_ms_${pap}.pdf`;
+      }
     }
   ];
   
@@ -164,22 +188,10 @@
   const canvas = document.getElementById('canvas');
   const overlay = document.getElementById('overlay');
   const prog = document.getElementById('progress-fill');
-  const fallbackBtn = document.getElementById('papacambridge-fallback');
-  const errorBanner = document.getElementById('error-banner');
   
   let ocrWorker = null;
   let currentPdf = null;
   let scrollObserver = null;
-
-  function showError(msg) {
-    errorBanner.innerText = msg;
-    errorBanner.style.display = 'block';
-  }
-
-  function hideError() {
-    errorBanner.innerText = '';
-    errorBanner.style.display = 'none';
-  }
 
   async function setupOCR() {
     if (!ocrWorker) {
@@ -216,18 +228,13 @@
   function resetCameraSystem() {
     stopCam();
     document.getElementById('viewer-wrap').style.display = 'none';
-    fallbackBtn.style.display = 'none';
     canvas.style.display = 'none';
-    hideError();
     document.getElementById('debug-read').innerText = "";
     initCam();
   }
 
   function processImage() {
-    if (!cameraStream) {
-      showError("Camera feed is offline. Tap 'RESET / START CAMERA' first.");
-      return;
-    }
+    if (!cameraStream) return alert("Camera feed is offline. Tap 'RESET / START CAMERA' first.");
     const ctx = canvas.getContext('2d');
     const scale = video.videoWidth > 1200 ? 1200 / video.videoWidth : 1;
     canvas.width = video.videoWidth * scale;
@@ -243,8 +250,7 @@
 
   function doCapture() {
     if(video.style.display === 'none' || video.videoWidth === 0) {
-      showError("Camera track is offline. Tap 'RESET / START CAMERA' first.");
-      return;
+      return alert("Camera track is offline. Tap 'RESET / START CAMERA' first.");
     }
     processImage();
   }
@@ -269,7 +275,6 @@
   }
 
   async function processPipeline() {
-    hideError();
     overlay.style.display = 'flex';
     updateProg(15, "Analyzing Document Geometry...");
 
@@ -314,25 +319,36 @@
   }
 
   async function fetchPDFResilient(targetUrl) {
+    console.log("🎯 TARGET URL:", targetUrl);
+    
+    // Custom Cloudflare Worker Proxy
     const MY_WORKER_URL = "https://proxy.questionscanner.workers.dev";
     const proxyUrl = `${MY_WORKER_URL}?url=${encodeURIComponent(targetUrl.trim())}`;
 
-    const response = await fetch(proxyUrl);
-    if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
-    
-    const buffer = await response.arrayBuffer();
-    const bytes = new Uint8Array(buffer);
-    
-    if (bytes.length < 5 || bytes[0] !== 0x25 || bytes[1] !== 0x50 || bytes[2] !== 0x44 || bytes[3] !== 0x46) {
-       throw new Error("Target site returned HTML or non-PDF data (404 page).");
-    }
+    try {
+      console.log("⏳ Requesting file through custom Cloudflare Worker...");
+      const response = await fetch(proxyUrl);
+      if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+      
+      const buffer = await response.arrayBuffer();
+      const bytes = new Uint8Array(buffer);
+      
+      // Magic Bytes Check (%PDF)
+      if (bytes.length < 5 || bytes[0] !== 0x25 || bytes[1] !== 0x50 || bytes[2] !== 0x44 || bytes[3] !== 0x46) {
+         throw new Error("Target site returned HTML or non-PDF data (404 page).");
+      }
 
-    const task = pdfjsLib.getDocument({ data: bytes });
-    return await task.promise;
+      const task = pdfjsLib.getDocument({ data: bytes });
+      const pdf = await task.promise;
+      console.log("✅ PDF fetched and parsed successfully.");
+      return pdf;
+    } catch (e) {
+      console.error("❌ Proxy request failed:", e.message);
+      throw e;
+    }
   }
 
   async function runNativeRenderPipeline() {
-    hideError();
     const sub = document.getElementById('sub-input').value.trim();
     const yr = document.getElementById('yr-input').value.trim();
     const seas = document.getElementById('seas-input').value.trim().toLowerCase();
@@ -340,29 +356,28 @@
     const targetQ = document.getElementById('q-input').value.trim() || "1";
 
     if (!/^\d{4}$/.test(sub)) {
-      showError("Validation Error: Subject must be exactly 4 numeric digits (e.g., 0580 or 9702).");
+      alert("Validation Error:\nSubject must be exactly 4 numeric digits (e.g., 0580 or 9702).");
       return;
     }
     if (!/^\d{2}$/.test(yr)) {
-      showError("Validation Error: Year must be exactly 2 numeric digits (e.g., 25).");
+      alert("Validation Error:\nYear must be exactly 2 numeric digits (e.g., 25).");
       return;
     }
     if (!/^[swm]$/i.test(seas)) {
-      showError("Validation Error: Series must be a single letter: 's', 'w', or 'm'.");
+      alert("Validation Error:\nSeries must be a single letter: 's' (Summer), 'w' (Winter), or 'm' (March).");
       return;
     }
     if (!/^\d{2}$/.test(pap)) {
-      showError("Validation Error: Paper must be exactly 2 numeric digits (e.g., 12).");
+      alert("Validation Error:\nPaper must be exactly 2 numeric digits (e.g., 12).");
       return;
     }
     if (!/^\d{1,2}$/.test(targetQ) || parseInt(targetQ, 10) <= 0) {
-      showError("Validation Error: Target Question must be a positive integer between 1 and 99.");
+      alert("Validation Error:\nTarget Question must be a positive integer value between 1 and 99.");
       return;
     }
 
     overlay.style.display = 'flex';
-    document.getElementById('viewer-wrap').style.display = 'none';
-    fallbackBtn.style.display = 'none';
+    document.getElementById('viewer-wrap').style.display = 'block';
     document.getElementById('paper-id').innerText = `${sub} | ${seas.toUpperCase()}${yr} | P${pap} | Q${targetQ}`;
     
     const navBar = document.getElementById('pdf-nav-bar');
@@ -375,9 +390,10 @@
     const loadingPhrases = [
       "leaking the paper...",
       "giving the paper to redditors...",
-      "ruining careers..."
+      "ruining careers ..."
     ];
     let phraseIndex = 0;
+    
     updateProg(50, loadingPhrases[phraseIndex]);
 
     const loadingInterval = setInterval(() => {
@@ -406,32 +422,15 @@
 
     if (!currentPdf) {
       clearInterval(loadingInterval);
+      document.getElementById('match-status').innerText = "Load Failed";
+      alert(`Could not find document anywhere.\n\nOpen F12 Console to see exactly why it failed.`);
       overlay.style.display = 'none';
-      
-      // Directly link the Marking Scheme (ms) PDF on PapaCambridge matching pre-2010 structure
-      let pcLevel = "as-and-a-level";
-      if (sub.startsWith('0') || sub === '0985') { pcLevel = "igcse"; } 
-      else if (/^[2457]/.test(sub)) { pcLevel = "o-level"; }
-      
-      const folderName = subjectNames[sub] || "mathematics";
-      const monthMap = { 's': 'jun', 'w': 'nov', 'm': 'mar' };
-      const monthStr = monthMap[seas] || 'jun';
-      const cleanPap = parseInt(pap, 10);
-      
-      const directMsPdfUrl = `https://pastpapers.papacambridge.com/viewer/caie/${pcLevel}-${folderName}-${sub}-20${yr}-${monthStr}-${sub}-${seas}${yr}-ms-${cleanPap}-pdf`;
-      
-      fallbackBtn.href = directMsPdfUrl;
-      fallbackBtn.style.display = 'block';
-      
-      showError("Could not fetch document automatically (pre-2010 limit or network block). Direct Marking Scheme PDF link generated below.");
       return;
     }
 
-    document.getElementById('viewer-wrap').style.display = 'block';
-
     try {
       let matchedPage = null; 
-      let fallbackPage = 2; 
+      let fallbackPage = 2; // Smart default: skips the useless cover page
       let foundMatch = false;
 
       for (let i = 1; i <= currentPdf.numPages; i++) {
@@ -445,12 +444,14 @@
           .join(' ')
           .toUpperCase(); 
         
+        // Rapidly skip generic instructions pages 
         if (fullPageText.includes("ANNOTATION") || 
             fullPageText.includes("SPECIFIC MARKING INSTRUCTIONS") ||
             (fullPageText.includes("GENERIC MARKING") && i <= 3)) {
           continue; 
         }
 
+        // TIGHTER LEFT MARGIN BOUNDARY (X between 20 and 95)
         const leftColumnList = content.items.filter(item => {
           if (!item || typeof item.str !== 'string') return false;
           const itemX = item.transform ? item.transform[4] : 0;
@@ -463,10 +464,12 @@
           
           if (/PAGE|MARK|TOTAL|SUBJECT/i.test(rawStr)) continue;
 
+          // Smart Fallback: Save Question 1's location just in case the target Q goes missing
           if (new RegExp('^1(?!\\d)', 'i').test(rawStr)) {
             if(fallbackPage === 2) fallbackPage = i; 
           }
 
+          // STRICT BOUNDARY MATCH: Prevents Q "1" from matching Q "10"
           const exactTargetRegex = new RegExp('^0?' + targetQ + '(?!\\d)', 'i');
           
           if (exactTargetRegex.test(rawStr)) {
@@ -477,6 +480,7 @@
         }
       }
 
+      // Execute Fallback if Exact Match Failed
       if (!foundMatch) {
          matchedPage = fallbackPage <= currentPdf.numPages ? fallbackPage : 1;
          document.getElementById('match-status').innerText = `Target Q Not Found - Defaulted to Pg ${matchedPage}`;
@@ -575,5 +579,3 @@
 </script>
 </body>
 </html>
-
-```
