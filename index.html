@@ -39,6 +39,7 @@
     .btn-fallback { background: #10b981; color: #0f172a; font-size: 0.85rem; font-weight: 700; display: none; margin-top: 10px; width: 100%; }
 
     #log { font-size: 0.8rem; color: #94a3b8; text-align: center; margin-bottom: 5px; }
+    #error-banner { display: none; width: 100%; background: rgba(239, 68, 68, 0.15); border: 1px solid #ef4444; color: #fca5a5; font-size: 0.75rem; padding: 8px 12px; border-radius: 8px; margin-bottom: 12px; text-align: center; font-weight: 600; }
     #debug-read { display: none; font-size: 0.6rem; color: #475569; text-align: center; margin-bottom: 10px; font-family: monospace; overflow: hidden; height: 12px; }
     
     .viewer-wrap { display: none; width: 100%; margin-top: 10px; background: var(--card); border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); padding: 12px; }
@@ -96,6 +97,8 @@
     </div>
   </div>
 
+  <div id="error-banner"></div>
+
    <div id="media-box">
     <video id="video" autoplay playsinline muted style="display:none;"></video>
     <canvas id="canvas" style="display:none;"></canvas>
@@ -115,7 +118,7 @@
     <button class="btn btn-sub btn-reset" onclick="resetCameraSystem()">START/RESET CAMERA</button>
   </div>
 
-  <a id="papacambridge-fallback" class="btn btn-fallback" target="_blank" href="#">OPEN ARCHIVED PAPER DIRECTLY (PAPACAMBRIDGE)</a>
+  <a id="papacambridge-fallback" class="btn btn-fallback" target="_blank" href="#">OPEN MARKING SCHEME PDF (PAPACAMBRIDGE)</a>
 
   <div class="viewer-wrap" id="viewer-wrap">
     <div id="info-bar">
@@ -161,10 +164,21 @@
   const overlay = document.getElementById('overlay');
   const prog = document.getElementById('progress-fill');
   const fallbackBtn = document.getElementById('papacambridge-fallback');
+  const errorBanner = document.getElementById('error-banner');
   
   let ocrWorker = null;
   let currentPdf = null;
   let scrollObserver = null;
+
+  function showError(msg) {
+    errorBanner.innerText = msg;
+    errorBanner.style.display = 'block';
+  }
+
+  function hideError() {
+    errorBanner.innerText = '';
+    errorBanner.style.display = 'none';
+  }
 
   async function setupOCR() {
     if (!ocrWorker) {
@@ -203,12 +217,16 @@
     document.getElementById('viewer-wrap').style.display = 'none';
     fallbackBtn.style.display = 'none';
     canvas.style.display = 'none';
+    hideError();
     document.getElementById('debug-read').innerText = "";
     initCam();
   }
 
   function processImage() {
-    if (!cameraStream) return alert("Camera feed is offline. Tap 'RESET / START CAMERA' first.");
+    if (!cameraStream) {
+      showError("Camera feed is offline. Tap 'RESET / START CAMERA' first.");
+      return;
+    }
     const ctx = canvas.getContext('2d');
     const scale = video.videoWidth > 1200 ? 1200 / video.videoWidth : 1;
     canvas.width = video.videoWidth * scale;
@@ -224,7 +242,8 @@
 
   function doCapture() {
     if(video.style.display === 'none' || video.videoWidth === 0) {
-      return alert("Camera track is offline. Tap 'RESET / START CAMERA' first.");
+      showError("Camera track is offline. Tap 'RESET / START CAMERA' first.");
+      return;
     }
     processImage();
   }
@@ -249,6 +268,7 @@
   }
 
   async function processPipeline() {
+    hideError();
     overlay.style.display = 'flex';
     updateProg(15, "Analyzing Document Geometry...");
 
@@ -311,6 +331,7 @@
   }
 
   async function runNativeRenderPipeline() {
+    hideError();
     const sub = document.getElementById('sub-input').value.trim();
     const yr = document.getElementById('yr-input').value.trim();
     const seas = document.getElementById('seas-input').value.trim().toLowerCase();
@@ -318,23 +339,23 @@
     const targetQ = document.getElementById('q-input').value.trim() || "1";
 
     if (!/^\d{4}$/.test(sub)) {
-      alert("Validation Error:\nSubject must be exactly 4 numeric digits (e.g., 0580 or 9702).");
+      showError("Validation Error: Subject must be exactly 4 numeric digits (e.g., 0580 or 9702).");
       return;
     }
     if (!/^\d{2}$/.test(yr)) {
-      alert("Validation Error:\nYear must be exactly 2 numeric digits (e.g., 25).");
+      showError("Validation Error: Year must be exactly 2 numeric digits (e.g., 25).");
       return;
     }
     if (!/^[swm]$/i.test(seas)) {
-      alert("Validation Error:\nSeries must be a single letter: 's' (Summer), 'w' (Winter), or 'm' (March).");
+      showError("Validation Error: Series must be a single letter: 's', 'w', or 'm'.");
       return;
     }
     if (!/^\d{2}$/.test(pap)) {
-      alert("Validation Error:\nPaper must be exactly 2 numeric digits (e.g., 12).");
+      showError("Validation Error: Paper must be exactly 2 numeric digits (e.g., 12).");
       return;
     }
     if (!/^\d{1,2}$/.test(targetQ) || parseInt(targetQ, 10) <= 0) {
-      alert("Validation Error:\nTarget Question must be a positive integer value between 1 and 99.");
+      showError("Validation Error: Target Question must be a positive integer between 1 and 99.");
       return;
     }
 
@@ -386,16 +407,12 @@
       clearInterval(loadingInterval);
       overlay.style.display = 'none';
       
-      // Setup PapaCambridge Deep Archive Fallback Button URL
-      let pcLevel = "cambridge-as-and-a-level";
-      if (sub.startsWith('0') || sub === '0985') { pcLevel = "cambridge-igcse"; } 
-      else if (/^[2457]/.test(sub)) { pcLevel = "cambridge-o-level"; }
-      
-      const papaCambridgeUrl = `https://pastpapers.papacambridge.com/papers/caie/${pcLevel}`;
-      fallbackBtn.href = papaCambridgeUrl;
+      // Directly link the Marking Scheme (ms) PDF on PapaCambridge
+      const directMsPdfUrl = `https://pastpapers.papacambridge.com/directories/CAIE/CAIE-pastpapers/upload/${sub}_${seas}${yr}_ms_${pap}.pdf`;
+      fallbackBtn.href = directMsPdfUrl;
       fallbackBtn.style.display = 'block';
       
-      alert(`Could not fetch document automatically (pre-2010 limit or network block).\n\nUse the PapaCambridge direct archive button below to bypass restrictions.`);
+      showError("Could not fetch document automatically (pre-2010 limit or network block). Direct Marking Scheme PDF link generated below.");
       return;
     }
 
