@@ -1,139 +1,8 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Leakbridge - Question Scanner</title>
-  <script src="https://unpkg.com/tesseract.js@4.0.2/dist/tesseract.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght=300;400;600;700&display=swap" rel="stylesheet">
-  <style>
-    :root { --bg: #0f172a; --card: #1e293b; --accent: #38bdf8; --text: #f8fafc; --nav-btn: #334155; }
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Outfit', sans-serif; }
-    body { background: var(--bg); color: var(--text); padding: 15px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
-    .container { width: 100%; max-width: 450px; }
-    
-    .header { text-align: center; margin-bottom: 20px; }
-    .header h1 { font-family: 'Montserrat', sans-serif; font-size: 1.4rem; letter-spacing: 2px; font-weight:400 }
-    .header h2 { font-family: 'Montserrat', sans-serif; font-size: 0.8rem; letter-spacing: 2px; font-weight:200 }
-
-    /* Structural Input Controls Dashboard */
-    .settings-bar { width: 100%; background: var(--card); padding: 10px; border-radius: 12px; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.05); }
-    .input-row { display: flex; justify-content: space-between; gap: 6px; width: 100%; }
-    .input-group { display: flex; flex-direction: column; align-items: center; gap: 2px; flex: 1; }
-    .settings-bar label { font-size: 0.65rem; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px; }
-    .input-example { font-size: 0.55rem; color: #64748b; font-weight: 400; margin-bottom: 2px; }
-    .settings-bar input { background: #0f172a; border: 1px solid #334155; color: white; padding: 6px 4px; border-radius: 6px; text-align: center; font-weight: 600; font-size: 0.85rem; width: 100%; outline: none; }
-
-    #media-box { width: 100%; aspect-ratio: 16 / 9; background: #000; border-radius: 12px; overflow: hidden; position: relative; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 15px; }
-    video, canvas { width: 100%; height: 100%; object-fit: cover; }
-    
-    #overlay { position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(15, 23, 42, 0.96); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 50; }
-    .progress-wrap { width: 70%; height: 6px; background: #334155; border-radius: 10px; margin-top: 15px; overflow: hidden; }
-    #progress-fill { width: 0%; height: 100%; background: var(--accent); transition: width 0.3s; }
-        
-    .btn-reset { background: #ea580c; color: white; font-size: 0.85rem; grid-column: span 2; }
-    .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
-    .btn { padding: 14px; border-radius: 10px; border: none; font-weight: 400; cursor: pointer; transition: 0.2s; }
-    .btn-main { background: var(--accent); color: #0f172a; grid-column: span 2; font-size: 1rem; }
-    .btn-sub { background: #334155; color: white; font-size: 0.6rem; }
-
-    #log { font-size: 0.8rem; color: #94a3b8; text-align: center; margin-bottom: 5px; }
-    #debug-read { display: none; font-size: 0.6rem; color: #475569; text-align: center; margin-bottom: 10px; font-family: monospace; overflow: hidden; height: 12px; }
-    
-    /* Native Document Display Workspace */
-    .viewer-wrap { display: none; width: 100%; margin-top: 10px; background: var(--card); border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); padding: 12px; }
-    #info-bar { display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; margin-bottom: 10px; padding: 0 4px; }
-    
-    /* Horizontal Navigation Picker Bar */
-    #pdf-nav-bar { width: 100%; display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 12px; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; }
-    #pdf-nav-bar::-webkit-scrollbar { height: 4px; }
-    #pdf-nav-bar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
-    .nav-jump-btn { background: var(--nav-btn); color: white; border: none; padding: 6px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; cursor: pointer; flex-shrink: 0; transition: 0.2s; }
-    .nav-jump-btn.active { background: var(--accent); color: #0f172a; }
-
-    /* Strict 1-Page Native CSS Scroll Snap-Track Viewport */
-    #pdf-sections-track { width: 100%; height: 520px; display: flex; flex-direction: column; gap: 0px; overflow-y: scroll; scroll-snap-type: y mandatory; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; border-radius: 8px; background: #0f172a; border: 1px solid rgba(255,255,255,0.1); }
-    .page-section { width: 100%; height: 100%; min-height: 100%; scroll-snap-align: start; scroll-snap-stop: always; flex-shrink: 0; position: relative; display: flex; align-items: center; justify-content: center; background: #0f172a; overflow: hidden; }
-    .page-badge { position: absolute; top: 12px; left: 12px; background: rgba(15, 23, 42, 0.85); color: var(--accent); font-size: 0.65rem; font-weight: 700; padding: 4px 8px; border-radius: 4px; z-index: 10; border: 1px solid rgba(255,255,255,0.05); }
-    
-    /* Layout Canvas Scaling Rules */
-    .page-section canvas { max-width: 100%; max-height: 100%; width: auto; height: auto; display: block; background: white; image-rendering: -webkit-optimize-contrast; }
-    .loading-placeholder { font-size: 0.8rem; color: #475569; font-weight: 400; text-transform: uppercase; letter-spacing: 0.5px; animation: pulse 1.5s infinite; }
-    @keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.9; } }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <h1>Leakbridge Papers</h1>
-    <h2>only takes code like: ON/2021/22/Q5,S23/13/Q26</h2>
-  </div>
-  
-<div class="container">
-  <div class="settings-bar">
-    <div class="input-row">
-      <div class="input-group">
-        <label>Subject</label>
-        <span class="input-example">e.g. 9709</span>
-        <input type="text" id="sub-input" value="9709" maxlength="4">
-      </div>
-      <div class="input-group">
-        <label>Year</label>
-        <span class="input-example">e.g. 25</span>
-        <input type="text" id="yr-input" value="25" maxlength="2">
-      </div>
-      <div class="input-group">
-        <label>Series</label>
-        <span class="input-example">e.g. s</span>
-        <input type="text" id="seas-input" value="s" maxlength="1">
-      </div>
-      <div class="input-group">
-        <label>Paper</label>
-        <span class="input-example">e.g. 12</span>
-        <input type="text" id="pap-input" value="12" maxlength="2">
-      </div>
-      <div class="input-group">
-        <label>Target Q</label>
-        <span class="input-example">e.g. 5</span>
-        <input type="text" id="q-input" value="1" maxlength="2">
-      </div>
-    </div>
-  </div>
-
-   <div id="media-box">
-    <video id="video" autoplay playsinline muted style="display:none;"></video>
-    <canvas id="canvas" style="display:none;"></canvas>
-    <div id="overlay">
-      <div id="status-txt" style="font-weight:700; color:var(--accent);">INITIALIZING...</div>
-      <div class="progress-wrap"><div id="progress-fill"></div></div>
-    </div>
-  </div>
-
-  <div id="log">Ready to Scan Paper</div>
-  <div id="debug-read"></div>
-
-  <div class="btn-grid">
-    <button class="btn btn-main" onclick="doCapture()">CAPTURE & ANALYZE</button>
-    <button class="btn btn-sub" onclick="runNativeRenderPipeline()">FETCH FROM TEXT BOX</button>
-    <label class="btn btn-sub" style="text-align:center; cursor:pointer;">UPLOAD<input type="file" hidden accept="image/*" onchange="doUpload(event)"></label>
-    <button class="btn btn-sub btn-reset" onclick="resetCameraSystem()">START/RESET CAMERA</button>
-  </div>
-
-  <div class="viewer-wrap" id="viewer-wrap">
-    <div id="info-bar">
-        <span id="paper-id" style="color:var(--accent); font-weight:bold;"></span>
-        <span id="match-status" style="font-size:0.75rem; color:#94a3b8;"></span>
-    </div>
-    <div id="pdf-nav-bar"></div>
-    <div id="pdf-sections-track"></div>
-  </div>
-</div>
-
 <script>
   pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
   
   // ==========================================
-  // CENTRALIZABLE FALLBACK PAPERS REGISTRY
+  // UPDATED SOURCES (PastPapers.co REMOVED)
   // ==========================================
   const paperSources = [
     {
@@ -160,29 +29,26 @@
       }
     },
     {
-      name: "PastPapers.co",
+      name: "GCE Guide",
       buildUrl: (sub, yr, seas, pap) => {
         const subjectNames = {
           "9709": "Mathematics", "9702": "Physics", "9701": "Chemistry", "9700": "Biology",
-          "9618": "Computer-Science", "9708": "Economics", "9706": "Accounting", "9609": "Business",
+          "9618": "Computer Science", "9708": "Economics", "9706": "Accounting", "9609": "Business",
           "0580": "Mathematics", "0625": "Physics", "0620": "Chemistry", "0610": "Biology",
-          "0478": "Computer-Science", "0455": "Economics", "0452": "Accounting", "0985": "Accounting",
-          "0450": "Business-Studies",
-          "7707": "Accounting", "4024": "Mathematics-D", "5054": "Physics", "5070": "Chemistry",
-          "5090": "Biology", "2210": "Computer-Science", "2281": "Economics", "7115": "Business-Studies"
+          "0478": "Computer Science", "0455": "Economics", "0452": "Accounting", "0985": "Accounting",
+          "0450": "Business Studies",
+          "7707": "Accounting", "4024": "Mathematics D (Calculator Version)", "5054": "Physics", "5070": "Chemistry",
+          "5090": "Biology", "2210": "Computer Science", "2281": "Economics", "7115": "Business Studies"
         };
         
-        const folderSeasons = { "m": "March", "s": "May-June", "w": "October-November" };
+        let levelFolder = "A%20Levels";
+        if (sub.startsWith('0') || sub === '0985') { levelFolder = "IGCSE"; } 
+        else if (/^[2457]/.test(sub)) { levelFolder = "O%20Levels"; }
         
-        let levelFolder = "a-level";
-        if (sub.startsWith('0')) { levelFolder = "igcse"; } 
-        else if (/^[2457]/.test(sub)) { levelFolder = "o-level"; }
-        
-        const folderName = subjectNames[sub] || "Subject";
-        const seasonFolderWord = folderSeasons[seas] || "May-June";
+        const folderName = subjectNames[sub] ? encodeURIComponent(subjectNames[sub]) : "Subject";
         const fullYear = `20${yr}`;
         
-        return `https://pastpapers.co/api/file/caie/${levelFolder}/${folderName}-${sub}/${fullYear}-${seasonFolderWord}/${sub}_${seas}${yr}_ms_${pap}.pdf`;
+        return `https://papers.gceguide.cc/${levelFolder}/${folderName}%20(${sub})/${fullYear}/${sub}_${seas}${yr}_ms_${pap}.pdf`;
       }
     }
   ];
@@ -321,7 +187,6 @@
     await runNativeRenderPipeline();
   }
 
-  // FIXED: Magic Bytes Checker & Safe Proxy Array
   async function fetchPDFResilient(targetUrl) {
     console.log("🎯 TARGET URL:", targetUrl);
     
@@ -433,7 +298,8 @@
     }
 
     try {
-      let matchedPage = 1; 
+      let matchedPage = null; 
+      let fallbackPage = 2; // Smart default: skips the useless cover page
       let foundMatch = false;
 
       for (let i = 1; i <= currentPdf.numPages; i++) {
@@ -447,39 +313,48 @@
           .join(' ')
           .toUpperCase(); 
         
+        // Rapidly skip generic instructions pages 
         if (fullPageText.includes("ANNOTATION") || 
-            fullPageText.includes("ABBREVIATION") || 
             fullPageText.includes("SPECIFIC MARKING INSTRUCTIONS") ||
-            fullPageText.includes("GENERIC MARKING PRINCIPLE") ||
-            fullPageText.includes("MARK SCHEME NOTES") ||
-            fullPageText.includes("GENERAL INSTRUCTIONS")) {
+            (fullPageText.includes("GENERIC MARKING") && i <= 3)) {
           continue; 
         }
 
+        // TIGHTER LEFT MARGIN BOUNDARY (X between 20 and 95)
         const leftColumnList = content.items.filter(item => {
           if (!item || typeof item.str !== 'string') return false;
           const itemX = item.transform ? item.transform[4] : 0;
-          const itemY = item.transform ? item.transform[5] : 0;
-          return itemX >= 0 && itemX < 160 && itemY > 30 && itemY < 810;
+          return itemX >= 20 && itemX < 95;
         });
 
         for (let item of leftColumnList) {
-          const rawStr = item.str.trim().toUpperCase();
+          const rawStr = item.str.trim();
           if (!rawStr) continue;
           
-          if (/PAGE|MARK|TOTAL|SUBJECT|COMMENT|CAMBRIDGE|PRINCIPLE|GUIDELINE/i.test(rawStr)) {
-            continue;
+          if (/PAGE|MARK|TOTAL|SUBJECT/i.test(rawStr)) continue;
+
+          // Smart Fallback: Save Question 1's location just in case the target Q goes missing
+          if (new RegExp('^1(?!\\d)', 'i').test(rawStr)) {
+            if(fallbackPage === 2) fallbackPage = i; 
           }
 
-          let cleanStr = rawStr.replace(/QUESTION/g, '').trim();
-          const boundaryRegex = new RegExp('(^|\\b)' + targetQ + '(\\b|\\(|\\)|$)');
+          // STRICT BOUNDARY MATCH: Prevents Q "1" from matching Q "10"
+          const exactTargetRegex = new RegExp('^0?' + targetQ + '(?!\\d)', 'i');
           
-          if (boundaryRegex.test(cleanStr)) {
+          if (exactTargetRegex.test(rawStr)) {
             matchedPage = i;
             foundMatch = true;
             break;
           }
         }
+      }
+
+      // Execute Fallback if Exact Match Failed
+      if (!foundMatch) {
+         matchedPage = fallbackPage <= currentPdf.numPages ? fallbackPage : 1;
+         document.getElementById('match-status').innerText = `Target Q Not Found - Defaulted to Pg ${matchedPage}`;
+      } else {
+         document.getElementById('match-status').innerText = `Focused Page ${matchedPage}`;
       }
 
       scrollObserver = new IntersectionObserver((entries) => {
@@ -510,7 +385,6 @@
         scrollObserver.observe(section);
       }
 
-      document.getElementById('match-status').innerText = `Focused Page ${matchedPage}`;
       updateProg(100, "Sync Complete.");
       
       setTimeout(() => {
@@ -572,5 +446,3 @@
     document.getElementById('status-txt').innerText = msg;
   }
 </script>
-</body>
-</html>
