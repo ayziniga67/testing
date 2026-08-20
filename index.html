@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -133,20 +134,20 @@
 <script>
   pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
   
+  const subjectNames = {
+    "9709": "mathematics", "9702": "physics", "9701": "chemistry", "9700": "biology",
+    "9618": "computer-science", "9708": "economics", "9706": "accounting", "9609": "business",
+    "0580": "mathematics", "0625": "physics", "0620": "chemistry", "0610": "biology",
+    "0478": "computer-science", "0455": "economics", "0452": "accounting", "0985": "accounting",
+    "0450": "business-studies",
+    "7707": "accounting", "4024": "mathematics-d", "5054": "physics", "5070": "chemistry",
+    "5090": "biology", "2210": "computer-science", "2281": "economics", "7115": "business-studies"
+  };
+
   const paperSources = [
     {
       name: "BestExamHelp",
       buildUrl: (sub, yr, seas, pap) => {
-        const subjectNames = {
-          "9709": "mathematics", "9702": "physics", "9701": "chemistry", "9700": "biology",
-          "9618": "computer-science", "9708": "economics", "9706": "accounting", "9609": "business",
-          "0580": "mathematics", "0625": "physics", "0620": "chemistry", "0610": "biology",
-          "0478": "computer-science", "0455": "economics", "0452": "accounting", "0985": "accounting",
-          "0450": "business-studies",
-          "7707": "accounting", "4024": "mathematics-d", "5054": "physics", "5070": "chemistry",
-          "5090": "biology", "2210": "computer-science", "2281": "economics", "7115": "business-studies"
-        };
-        
         let levelFolder = "cambridge-international-a-level";
         if (sub.startsWith('0') || sub === '0985') { levelFolder = "cambridge-igcse"; } 
         else if (/^[2457]/.test(sub)) { levelFolder = "cambridge-o-level"; }
@@ -407,8 +408,18 @@
       clearInterval(loadingInterval);
       overlay.style.display = 'none';
       
-      // Directly link the Marking Scheme (ms) PDF on PapaCambridge
-      const directMsPdfUrl = `https://pastpapers.papacambridge.com/directories/CAIE/CAIE-pastpapers/upload/${sub}_${seas}${yr}_ms_${pap}.pdf`;
+      // Directly link the Marking Scheme (ms) PDF on PapaCambridge matching pre-2010 structure
+      let pcLevel = "as-and-a-level";
+      if (sub.startsWith('0') || sub === '0985') { pcLevel = "igcse"; } 
+      else if (/^[2457]/.test(sub)) { pcLevel = "o-level"; }
+      
+      const folderName = subjectNames[sub] || "mathematics";
+      const monthMap = { 's': 'jun', 'w': 'nov', 'm': 'mar' };
+      const monthStr = monthMap[seas] || 'jun';
+      const cleanPap = parseInt(pap, 10);
+      
+      const directMsPdfUrl = `https://pastpapers.papacambridge.com/viewer/caie/${pcLevel}-${folderName}-${sub}-20${yr}-${monthStr}-${sub}-${seas}${yr}-ms-${cleanPap}-pdf`;
+      
       fallbackBtn.href = directMsPdfUrl;
       fallbackBtn.style.display = 'block';
       
@@ -564,3 +575,5 @@
 </script>
 </body>
 </html>
+
+```
