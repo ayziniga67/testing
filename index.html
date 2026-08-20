@@ -33,9 +33,10 @@
         
     .btn-reset { background: #ea580c; color: white; font-size: 0.85rem; grid-column: span 2; }
     .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
-    .btn { padding: 14px; border-radius: 10px; border: none; font-weight: 400; cursor: pointer; transition: 0.2s; }
+    .btn { padding: 14px; border-radius: 10px; border: none; font-weight: 400; cursor: pointer; transition: 0.2s; text-decoration: none; text-align: center; display: inline-block; }
     .btn-main { background: var(--accent); color: #0f172a; grid-column: span 2; font-size: 1rem; }
     .btn-sub { background: #334155; color: white; font-size: 0.6rem; }
+    .btn-fallback { background: #10b981; color: #0f172a; font-size: 0.85rem; font-weight: 700; display: none; margin-top: 10px; width: 100%; }
 
     #log { font-size: 0.8rem; color: #94a3b8; text-align: center; margin-bottom: 5px; }
     #debug-read { display: none; font-size: 0.6rem; color: #475569; text-align: center; margin-bottom: 10px; font-family: monospace; overflow: hidden; height: 12px; }
@@ -114,6 +115,8 @@
     <button class="btn btn-sub btn-reset" onclick="resetCameraSystem()">START/RESET CAMERA</button>
   </div>
 
+  <a id="papacambridge-fallback" class="btn btn-fallback" target="_blank" href="#">OPEN ARCHIVED PAPER DIRECTLY (PAPACAMBRIDGE)</a>
+
   <div class="viewer-wrap" id="viewer-wrap">
     <div id="info-bar">
         <span id="paper-id" style="color:var(--accent); font-weight:bold;"></span>
@@ -127,9 +130,6 @@
 <script>
   pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
   
-  // ==========================================
-  // ACTIVE SOURCE (GCE Guide & PastPapers Removed)
-  // ==========================================
   const paperSources = [
     {
       name: "BestExamHelp",
@@ -160,6 +160,7 @@
   const canvas = document.getElementById('canvas');
   const overlay = document.getElementById('overlay');
   const prog = document.getElementById('progress-fill');
+  const fallbackBtn = document.getElementById('papacambridge-fallback');
   
   let ocrWorker = null;
   let currentPdf = null;
@@ -200,6 +201,7 @@
   function resetCameraSystem() {
     stopCam();
     document.getElementById('viewer-wrap').style.display = 'none';
+    fallbackBtn.style.display = 'none';
     canvas.style.display = 'none';
     document.getElementById('debug-read').innerText = "";
     initCam();
@@ -291,31 +293,21 @@
   }
 
   async function fetchPDFResilient(targetUrl) {
-    console.log("🎯 TARGET URL:", targetUrl);
-    
     const MY_WORKER_URL = "https://proxy.questionscanner.workers.dev";
     const proxyUrl = `${MY_WORKER_URL}?url=${encodeURIComponent(targetUrl.trim())}`;
 
-    try {
-      console.log("⏳ Requesting file through custom Cloudflare Worker...");
-      const response = await fetch(proxyUrl);
-      if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
-      
-      const buffer = await response.arrayBuffer();
-      const bytes = new Uint8Array(buffer);
-      
-      if (bytes.length < 5 || bytes[0] !== 0x25 || bytes[1] !== 0x50 || bytes[2] !== 0x44 || bytes[3] !== 0x46) {
-         throw new Error("Target site returned HTML or non-PDF data (404 page).");
-      }
-
-      const task = pdfjsLib.getDocument({ data: bytes });
-      const pdf = await task.promise;
-      console.log("✅ PDF fetched and parsed successfully.");
-      return pdf;
-    } catch (e) {
-      console.error("❌ Proxy request failed:", e.message);
-      throw e;
+    const response = await fetch(proxyUrl);
+    if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+    
+    const buffer = await response.arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+    
+    if (bytes.length < 5 || bytes[0] !== 0x25 || bytes[1] !== 0x50 || bytes[2] !== 0x44 || bytes[3] !== 0x46) {
+       throw new Error("Target site returned HTML or non-PDF data (404 page).");
     }
+
+    const task = pdfjsLib.getDocument({ data: bytes });
+    return await task.promise;
   }
 
   async function runNativeRenderPipeline() {
@@ -347,7 +339,8 @@
     }
 
     overlay.style.display = 'flex';
-    document.getElementById('viewer-wrap').style.display = 'block';
+    document.getElementById('viewer-wrap').style.display = 'none';
+    fallbackBtn.style.display = 'none';
     document.getElementById('paper-id').innerText = `${sub} | ${seas.toUpperCase()}${yr} | P${pap} | Q${targetQ}`;
     
     const navBar = document.getElementById('pdf-nav-bar');
@@ -363,7 +356,6 @@
       "ruining careers..."
     ];
     let phraseIndex = 0;
-    
     updateProg(50, loadingPhrases[phraseIndex]);
 
     const loadingInterval = setInterval(() => {
@@ -392,11 +384,22 @@
 
     if (!currentPdf) {
       clearInterval(loadingInterval);
-      document.getElementById('match-status').innerText = "Load Failed";
-      alert(`Could not find document anywhere.\n\nOpen F12 Console to see exactly why it failed.`);
       overlay.style.display = 'none';
+      
+      // Setup PapaCambridge Deep Archive Fallback Button URL
+      let pcLevel = "cambridge-as-and-a-level";
+      if (sub.startsWith('0') || sub === '0985') { pcLevel = "cambridge-igcse"; } 
+      else if (/^[2457]/.test(sub)) { pcLevel = "cambridge-o-level"; }
+      
+      const papaCambridgeUrl = `https://pastpapers.papacambridge.com/papers/caie/${pcLevel}`;
+      fallbackBtn.href = papaCambridgeUrl;
+      fallbackBtn.style.display = 'block';
+      
+      alert(`Could not fetch document automatically (pre-2010 limit or network block).\n\nUse the PapaCambridge direct archive button below to bypass restrictions.`);
       return;
     }
+
+    document.getElementById('viewer-wrap').style.display = 'block';
 
     try {
       let matchedPage = null; 
@@ -542,3 +545,5 @@
     document.getElementById('status-txt').innerText = msg;
   }
 </script>
+</body>
+</html>
