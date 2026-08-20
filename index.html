@@ -135,9 +135,12 @@
  // ==========================================
   // CENTRALIZABLE FALLBACK PAPERS REGISTRY
   // ==========================================
+  // ==========================================
+  // CENTRALIZABLE FALLBACK PAPERS REGISTRY
+  // ==========================================
   const paperSources = [
     {
-      name: "PastPapers.co",
+      name: "BestExamHelp",
       buildUrl: (sub, yr, seas, pap) => {
         const subjectNames = {
           "9709": "mathematics", "9702": "physics", "9701": "chemistry", "9700": "biology",
@@ -149,36 +152,41 @@
           "5090": "biology", "2210": "computer-science", "2281": "economics", "7115": "business-studies"
         };
         
-        const folderSeasons = { "m": "march", "s": "may-june", "w": "october-november" };
+        let levelFolder = "cambridge-international-a-level";
+        if (sub.startsWith('0') || sub === '0985') { levelFolder = "cambridge-igcse"; } 
+        else if (/^[2457]/.test(sub)) { levelFolder = "cambridge-o-level"; }
+        
+        const folderName = subjectNames[sub] || "subject";
+        const fullYear = `20${yr}`;
+        
+        return `https://bestexamhelp.com/exam/${levelFolder}/${folderName}-${sub}/${fullYear}/${sub}_${seas}${yr}_ms_${pap}.pdf`;
+      }
+    },
+    {
+      name: "PastPapers.co",
+      buildUrl: (sub, yr, seas, pap) => {
+        const subjectNames = {
+          "9709": "Mathematics", "9702": "Physics", "9701": "Chemistry", "9700": "Biology",
+          "9618": "Computer-Science", "9708": "Economics", "9706": "Accounting", "9609": "Business",
+          "0580": "Mathematics", "0625": "Physics", "0620": "Chemistry", "0610": "Biology",
+          "0478": "Computer-Science", "0455": "Economics", "0452": "Accounting", "0985": "Accounting",
+          "0450": "Business-Studies",
+          "7707": "Accounting", "4024": "Mathematics-D", "5054": "Physics", "5070": "Chemistry",
+          "5090": "Biology", "2210": "Computer-Science", "2281": "Economics", "7115": "Business-Studies"
+        };
+        
+        // Fixed: PastPapers.co requires Title Case for these folders
+        const folderSeasons = { "m": "March", "s": "May-June", "w": "October-November" };
         
         let levelFolder = "a-level";
         if (sub.startsWith('0')) { levelFolder = "igcse"; } 
         else if (/^[2457]/.test(sub)) { levelFolder = "o-level"; }
         
-        const folderName = subjectNames[sub] || "subject";
-        const seasonFolderWord = folderSeasons[seas] || "may-june";
+        const folderName = subjectNames[sub] || "Subject";
+        const seasonFolderWord = folderSeasons[seas] || "May-June";
         const fullYear = `20${yr}`;
         
         return `https://pastpapers.co/api/file/caie/${levelFolder}/${folderName}-${sub}/${fullYear}-${seasonFolderWord}/${sub}_${seas}${yr}_ms_${pap}.pdf`;
-      }
-    },
-    {
-      name: "Paperstack",
-      buildUrl: (sub, yr, seas, pap) => {
-        let levelFolder = "a_levels"; 
-        if (sub.startsWith('0')) { levelFolder = "igcse"; } 
-        else if (/^[2457]/.test(sub)) { levelFolder = "o-level"; }
-
-        const paperstackSubjectIds = {
-          "9701": "1", 
-          "9709": "1", 
-          "9618": "2", 
-          "9702": "3"  
-        };
-        const subjectId = paperstackSubjectIds[sub] || "3"; 
-
-        // Fixed: Strictly formats with underscores and appends .pdf
-        return `https://app.paperstack.cc/${levelFolder}/subject${subjectId}/pdf/${sub}_${seas}${yr}_ms_${pap}.pdf`;
       }
     }
   ];
