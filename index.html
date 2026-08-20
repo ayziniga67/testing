@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Leakbridge - question scanner</title>
+  <title>Leakbridge - Question Scanner</title>
   <script src="https://unpkg.com/tesseract.js@4.0.2/dist/tesseract.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght=300;400;600;700&display=swap" rel="stylesheet">
   <style>
     :root { --bg: #0f172a; --card: #1e293b; --accent: #38bdf8; --text: #f8fafc; --nav-btn: #334155; }
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Outfit', sans-serif; }
@@ -17,11 +17,12 @@
     .header h1 { font-family: 'Montserrat', sans-serif; font-size: 1.4rem; letter-spacing: 2px; font-weight:400 }
     .header h2 { font-family: 'Montserrat', sans-serif; font-size: 0.8rem; letter-spacing: 2px; font-weight:200 }
 
-    /* Expanded Structural Input Controls Dashboard */
+    /* Structural Input Controls Dashboard */
     .settings-bar { width: 100%; background: var(--card); padding: 10px; border-radius: 12px; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.05); }
     .input-row { display: flex; justify-content: space-between; gap: 6px; width: 100%; }
-    .input-group { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; }
+    .input-group { display: flex; flex-direction: column; align-items: center; gap: 2px; flex: 1; }
     .settings-bar label { font-size: 0.65rem; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px; }
+    .input-example { font-size: 0.55rem; color: #64748b; font-weight: 400; margin-bottom: 2px; }
     .settings-bar input { background: #0f172a; border: 1px solid #334155; color: white; padding: 6px 4px; border-radius: 6px; text-align: center; font-weight: 600; font-size: 0.85rem; width: 100%; outline: none; }
 
     #media-box { width: 100%; aspect-ratio: 16 / 9; background: #000; border-radius: 12px; overflow: hidden; position: relative; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 15px; }
@@ -56,7 +57,7 @@
     .page-section { width: 100%; height: 100%; min-height: 100%; scroll-snap-align: start; scroll-snap-stop: always; flex-shrink: 0; position: relative; display: flex; align-items: center; justify-content: center; background: #0f172a; overflow: hidden; }
     .page-badge { position: absolute; top: 12px; left: 12px; background: rgba(15, 23, 42, 0.85); color: var(--accent); font-size: 0.65rem; font-weight: 700; padding: 4px 8px; border-radius: 4px; z-index: 10; border: 1px solid rgba(255,255,255,0.05); }
     
-    /* Strict Layout Canvas Scaling Rules */
+    /* Layout Canvas Scaling Rules */
     .page-section canvas { max-width: 100%; max-height: 100%; width: auto; height: auto; display: block; background: white; image-rendering: -webkit-optimize-contrast; }
     .loading-placeholder { font-size: 0.8rem; color: #475569; font-weight: 400; text-transform: uppercase; letter-spacing: 0.5px; animation: pulse 1.5s infinite; }
     @keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.9; } }
@@ -73,22 +74,27 @@
     <div class="input-row">
       <div class="input-group">
         <label>Subject</label>
-        <input type="text" id="sub-input" value="9702" maxlength="4">
+        <span class="input-example">e.g. 9709</span>
+        <input type="text" id="sub-input" value="9709" maxlength="4">
       </div>
       <div class="input-group">
         <label>Year</label>
-        <input type="text" id="yr-input" value="23" maxlength="2">
+        <span class="input-example">e.g. 25</span>
+        <input type="text" id="yr-input" value="25" maxlength="2">
       </div>
       <div class="input-group">
         <label>Series</label>
+        <span class="input-example">e.g. s</span>
         <input type="text" id="seas-input" value="s" maxlength="1">
       </div>
       <div class="input-group">
         <label>Paper</label>
-        <input type="text" id="pap-input" value="21" maxlength="2">
+        <span class="input-example">e.g. 12</span>
+        <input type="text" id="pap-input" value="12" maxlength="2">
       </div>
       <div class="input-group">
         <label>Target Q</label>
+        <span class="input-example">e.g. 5</span>
         <input type="text" id="q-input" value="1" maxlength="2">
       </div>
     </div>
@@ -125,6 +131,61 @@
 
 <script>
   pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+  
+  // ==========================================
+  // CENTRALIZABLE FALLBACK PAPERS REGISTRY
+  // ==========================================
+  const paperSources = [
+    {
+      name: "BestExamHelp",
+      buildUrl: (sub, yr, seas, pap) => {
+        const subjectNames = {
+          "9709": "mathematics", "9702": "physics", "9701": "chemistry", "9700": "biology",
+          "9618": "computer-science", "9708": "economics", "9706": "accounting", "9609": "business",
+          "0580": "mathematics", "0625": "physics", "0620": "chemistry", "0610": "biology",
+          "0478": "computer-science", "0455": "economics", "0452": "accounting", "0985": "accounting",
+          "0450": "business-studies",
+          "7707": "accounting", "4024": "mathematics-d", "5054": "physics", "5070": "chemistry",
+          "5090": "biology", "2210": "computer-science", "2281": "economics", "7115": "business-studies"
+        };
+        
+        let levelFolder = "cambridge-international-a-level";
+        if (sub.startsWith('0') || sub === '0985') { levelFolder = "cambridge-igcse"; } 
+        else if (/^[2457]/.test(sub)) { levelFolder = "cambridge-o-level"; }
+        
+        const folderName = subjectNames[sub] || "subject";
+        const fullYear = `20${yr}`;
+        
+        return `https://bestexamhelp.com/exam/${levelFolder}/${folderName}-${sub}/${fullYear}/${sub}_${seas}${yr}_ms_${pap}.pdf`;
+      }
+    },
+    {
+      name: "PastPapers.co",
+      buildUrl: (sub, yr, seas, pap) => {
+        const subjectNames = {
+          "9709": "Mathematics", "9702": "Physics", "9701": "Chemistry", "9700": "Biology",
+          "9618": "Computer-Science", "9708": "Economics", "9706": "Accounting", "9609": "Business",
+          "0580": "Mathematics", "0625": "Physics", "0620": "Chemistry", "0610": "Biology",
+          "0478": "Computer-Science", "0455": "Economics", "0452": "Accounting", "0985": "Accounting",
+          "0450": "Business-Studies",
+          "7707": "Accounting", "4024": "Mathematics-D", "5054": "Physics", "5070": "Chemistry",
+          "5090": "Biology", "2210": "Computer-Science", "2281": "Economics", "7115": "Business-Studies"
+        };
+        
+        const folderSeasons = { "m": "March", "s": "May-June", "w": "October-November" };
+        
+        let levelFolder = "a-level";
+        if (sub.startsWith('0')) { levelFolder = "igcse"; } 
+        else if (/^[2457]/.test(sub)) { levelFolder = "o-level"; }
+        
+        const folderName = subjectNames[sub] || "Subject";
+        const seasonFolderWord = folderSeasons[seas] || "May-June";
+        const fullYear = `20${yr}`;
+        
+        return `https://pastpapers.co/api/file/caie/${levelFolder}/${folderName}-${sub}/${fullYear}-${seasonFolderWord}/${sub}_${seas}${yr}_ms_${pap}.pdf`;
+      }
+    }
+  ];
   
   const video = document.getElementById('video');
   const canvas = document.getElementById('canvas');
@@ -246,7 +307,12 @@
         document.getElementById('yr-input').value = computedYr;
         document.getElementById('seas-input').value = computedSeas;
         document.getElementById('pap-input').value = computedPap;
-        if (match[4]) document.getElementById('q-input').value = match[4];
+        
+        if (match[4]) {
+          const qInput = document.getElementById('q-input');
+          qInput.value = ""; 
+          qInput.value = match[4].trim();
+        }
       }
     } catch(err) {
       console.warn("OCR non-blocking bypass active.");
@@ -255,10 +321,11 @@
     await runNativeRenderPipeline();
   }
 
+  // FIXED: Magic Bytes Checker & Safe Proxy Array
   async function fetchPDFResilient(targetUrl) {
     console.log("🎯 TARGET URL:", targetUrl);
     
-    // Paste your Cloudflare Worker URL here
+    // Custom Cloudflare Worker Proxy
     const MY_WORKER_URL = "https://proxy.questionscanner.workers.dev";
     const proxyUrl = `${MY_WORKER_URL}?url=${encodeURIComponent(targetUrl.trim())}`;
 
@@ -285,20 +352,6 @@
     }
   }
 
-    let lastError = null;
-    for (let i = 0; i < proxies.length; i++) {
-      try {
-        const task = pdfjsLib.getDocument(proxies[i]);
-        const pdf = await task.promise;
-        return pdf;
-      } catch (e) {
-        console.warn(`Proxy node ${i + 1} bypassed.`);
-        lastError = e;
-      }
-    }
-    throw lastError || new Error("All proxy pathways rejected file package stream.");
-  }
-
   async function runNativeRenderPipeline() {
     const sub = document.getElementById('sub-input').value.trim();
     const yr = document.getElementById('yr-input').value.trim();
@@ -306,62 +359,28 @@
     const pap = document.getElementById('pap-input').value.trim();
     const targetQ = document.getElementById('q-input').value.trim() || "1";
 
-    // 1. ADD THIS LOOKUP DICTIONARY FOR XTREMEPAPERS FOLDERS
-    const paperSources = [
-    {
-      name: "BestExamHelp",
-      buildUrl: (sub, yr, seas, pap) => {
-        const subjectNames = {
-          "9709": "mathematics", "9702": "physics", "9701": "chemistry", "9700": "biology",
-          "9618": "computer-science", "9708": "economics", "9706": "accounting", "9609": "business",
-          "0580": "mathematics", "0625": "physics", "0620": "chemistry", "0610": "biology",
-          "0478": "computer-science", "0455": "economics", "0452": "accounting", "0985": "accounting",
-          "0450": "business-studies",
-          "7707": "accounting", "4024": "mathematics-d", "5054": "physics", "5070": "chemistry",
-          "5090": "biology", "2210": "computer-science", "2281": "economics", "7115": "business-studies"
-        };
-        
-        let levelFolder = "cambridge-international-a-level";
-        if (sub.startsWith('0') || sub === '0985') { levelFolder = "cambridge-igcse"; } 
-        else if (/^[2457]/.test(sub)) { levelFolder = "cambridge-o-level"; }
-        
-        const folderName = subjectNames[sub] || "subject";
-        const fullYear = `20${yr}`;
-        
-        return `https://bestexamhelp.com/exam/${levelFolder}/${folderName}-${sub}/${fullYear}/${sub}_${seas}${yr}_ms_${pap}.pdf`;
-      }
-    },
-    {
-      name: "PastPapers.co",
-      buildUrl: (sub, yr, seas, pap) => {
-        const subjectNames = {
-          "9709": "Mathematics", "9702": "Physics", "9701": "Chemistry", "9700": "Biology",
-          "9618": "Computer-Science", "9708": "Economics", "9706": "Accounting", "9609": "Business",
-          "0580": "Mathematics", "0625": "Physics", "0620": "Chemistry", "0610": "Biology",
-          "0478": "Computer-Science", "0455": "Economics", "0452": "Accounting", "0985": "Accounting",
-          "0450": "Business-Studies",
-          "7707": "Accounting", "4024": "Mathematics-D", "5054": "Physics", "5070": "Chemistry",
-          "5090": "Biology", "2210": "Computer-Science", "2281": "Economics", "7115": "Business-Studies"
-        };
-        
-        // Fixed: PastPapers.co requires Title Case for these folders
-        const folderSeasons = { "m": "March", "s": "May-June", "w": "October-November" };
-        
-        let levelFolder = "a-level";
-        if (sub.startsWith('0')) { levelFolder = "igcse"; } 
-        else if (/^[2457]/.test(sub)) { levelFolder = "o-level"; }
-        
-        const folderName = subjectNames[sub] || "Subject";
-        const seasonFolderWord = folderSeasons[seas] || "May-June";
-        const fullYear = `20${yr}`;
-        
-        return `https://pastpapers.co/api/file/caie/${levelFolder}/${folderName}-${sub}/${fullYear}-${seasonFolderWord}/${sub}_${seas}${yr}_ms_${pap}.pdf`;
-      }
+    if (!/^\d{4}$/.test(sub)) {
+      alert("Validation Error:\nSubject must be exactly 4 numeric digits (e.g., 0580 or 9702).");
+      return;
     }
-  ];
+    if (!/^\d{2}$/.test(yr)) {
+      alert("Validation Error:\nYear must be exactly 2 numeric digits (e.g., 25).");
+      return;
+    }
+    if (!/^[swm]$/i.test(seas)) {
+      alert("Validation Error:\nSeries must be a single letter: 's' (Summer), 'w' (Winter), or 'm' (March).");
+      return;
+    }
+    if (!/^\d{2}$/.test(pap)) {
+      alert("Validation Error:\nPaper must be exactly 2 numeric digits (e.g., 12).");
+      return;
+    }
+    if (!/^\d{1,2}$/.test(targetQ) || parseInt(targetQ, 10) <= 0) {
+      alert("Validation Error:\nTarget Question must be a positive integer value between 1 and 99.");
+      return;
+    }
 
-    
-
+    overlay.style.display = 'flex';
     document.getElementById('viewer-wrap').style.display = 'block';
     document.getElementById('paper-id').innerText = `${sub} | ${seas.toUpperCase()}${yr} | P${pap} | Q${targetQ}`;
     
@@ -379,7 +398,7 @@
     ];
     let phraseIndex = 0;
     
-    updateProg(60, loadingPhrases[phraseIndex]);
+    updateProg(50, loadingPhrases[phraseIndex]);
 
     const loadingInterval = setInterval(() => {
       if (document.getElementById('overlay').style.display !== 'none') {
@@ -390,14 +409,34 @@
       }
     }, 10000);
     
-    try {
-      currentPdf = await fetchPDFResilient(msUrl);
+    currentPdf = null; 
+
+    for (let i = 0; i < paperSources.length; i++) {
+      const source = paperSources[i];
+      const generatedUrl = source.buildUrl(sub, yr, seas, pap);
+      updateProg(55 + (i * 10), `Trying ${source.name}...`);
       
-      let matchedPage = 2; 
+      try {
+        currentPdf = await fetchPDFResilient(generatedUrl);
+        break; 
+      } catch (e) {
+        console.warn(`Fallback: ${source.name} failed.`);
+      }
+    }
+
+    if (!currentPdf) {
+      clearInterval(loadingInterval);
+      document.getElementById('match-status').innerText = "Load Failed";
+      alert(`Could not find document anywhere.\n\nOpen F12 Console to see exactly why it failed.`);
+      overlay.style.display = 'none';
+      return;
+    }
+
+    try {
+      let matchedPage = 1; 
       let foundMatch = false;
 
-      // STEP 1: SEQUENCE COLUMN EXTRACTION ENGINE (Collects and scans left column sequential list)
-      for (let i = 2; i <= currentPdf.numPages; i++) {
+      for (let i = 1; i <= currentPdf.numPages; i++) {
         if (foundMatch) break;
         const page = await currentPdf.getPage(i);
         const content = await page.getTextContent();
@@ -406,39 +445,33 @@
           .filter(item => item && typeof item.str === 'string')
           .map(item => item.str)
           .join(' ')
-          .toUpperCase();
+          .toUpperCase(); 
         
-        // Skip common intro sections, rubrics, and annotation guidelines
         if (fullPageText.includes("ANNOTATION") || 
             fullPageText.includes("ABBREVIATION") || 
             fullPageText.includes("SPECIFIC MARKING INSTRUCTIONS") ||
             fullPageText.includes("GENERIC MARKING PRINCIPLE") ||
             fullPageText.includes("MARK SCHEME NOTES") ||
-            fullPageText.includes("GENERAL INSTRUCTIONS") ||
-            (i <= 4 && parseInt(targetQ) >= 5)) {
-          continue;
+            fullPageText.includes("GENERAL INSTRUCTIONS")) {
+          continue; 
         }
 
-        // Gather all elements inside the primary left column lanes (< 160 width bound on x-axis)
         const leftColumnList = content.items.filter(item => {
           if (!item || typeof item.str !== 'string') return false;
           const itemX = item.transform ? item.transform[4] : 0;
           const itemY = item.transform ? item.transform[5] : 0;
-          // Filter out header/footer noise on the y-axis (stays inside body)
           return itemX >= 0 && itemX < 160 && itemY > 30 && itemY < 810;
         });
 
-        // Scan the collected column items list one by one
         for (let item of leftColumnList) {
-          const rawStr = item.str.trim();
+          const rawStr = item.str.trim().toUpperCase();
           if (!rawStr) continue;
           
-          if (/page|mark|total|subject|comment|cambridge/i.test(rawStr)) {
+          if (/PAGE|MARK|TOTAL|SUBJECT|COMMENT|CAMBRIDGE|PRINCIPLE|GUIDELINE/i.test(rawStr)) {
             continue;
           }
 
-          // Strip headers out of the string before matching to catch dynamic table components
-          let cleanStr = rawStr.toUpperCase().replace(/QUESTION/g, '').trim();
+          let cleanStr = rawStr.replace(/QUESTION/g, '').trim();
           const boundaryRegex = new RegExp('(^|\\b)' + targetQ + '(\\b|\\(|\\)|$)');
           
           if (boundaryRegex.test(cleanStr)) {
@@ -449,7 +482,6 @@
         }
       }
 
-      // STEP 2: SETUP PRECISE INTERSECTION LAZY OBSERVER 
       scrollObserver = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
           if (entry.isIntersecting) {
@@ -460,7 +492,6 @@
         });
       }, { root: track, threshold: 0.1, rootMargin: "50px 0px" });
 
-      // STEP 3: CONSTRUCT STRUCTURAL SHELLS
       for (let i = 1; i <= currentPdf.numPages; i++) {
         const navBtn = document.createElement('button');
         navBtn.className = 'nav-jump-btn' + (i === matchedPage ? ' active' : '');
@@ -488,13 +519,11 @@
       }, 150);
 
     } catch (err) {
-      document.getElementById('match-status').innerText = "Load Failed";
-      alert(`Could not open document.\n\nGenerated Link Attempted:\n${msUrl}\n\nPlease check your input fields.`);
+      document.getElementById('match-status').innerText = "Analysis Failed";
       overlay.style.display = 'none';
     }
   }
 
-  // STEP 4: TRUE LAZY RENDER COMPLIANCE
   async function executeLazyRender(pageNum) {
     if (!currentPdf) return;
     try {
@@ -517,7 +546,7 @@
       if (placeholder) placeholder.remove();
       section.appendChild(pageCanvas);
     } catch (e) {
-      console.error(`Dynamic viewport painting error on page ${pageNum}:`, e);
+      console.error(`Dynamic viewport error on page ${pageNum}:`, e);
     }
   }
 
