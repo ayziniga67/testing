@@ -403,22 +403,37 @@
       }
     }
 
-   // Replace lines 276-292 in current working.html with this block
-if (!currentPdf) {
+    if (!currentPdf) {
       clearInterval(loadingInterval);
       overlay.style.display = 'none';
       
-      // Directly link the Marking Scheme (ms) PDF on PapaCambridge matching pre-2010 structure
+      // 1. Determine education level slug
       let pcLevel = "as-and-a-level";
       if (sub.startsWith('0') || sub === '0985') { pcLevel = "igcse"; } 
       else if (/^[2457]/.test(sub)) { pcLevel = "o-level"; }
       
+      // 2. Fetch subject name slug from subjectNames map
       const folderName = subjectNames[sub] || "mathematics";
-      const monthMap = { 's': 'jun', 'w': 'nov', 'm': 'mar' };
-      const monthStr = monthMap[seas] || 'jun';
-      const cleanPap = parseInt(pap, 10);
       
-      const directMsPdfUrl = `https://pastpapers.papacambridge.com/viewer/caie/${pcLevel}-${folderName}-${sub}-20${yr}-${monthStr}-${sub}-${seas}${yr}-ms-${cleanPap}-pdf`;
+      // 3. Map series code to month string
+      const monthMap = { 's': 'jun', 'w': 'nov', 'm': 'mar' };
+      const monthStr = monthMap[seas.toLowerCase()] || 'jun';
+      
+      // 4. Extract target paper number based on year format
+      const fullYear = `20${yr}`;
+      const numericYr = parseInt(yr, 10);
+      
+      let cleanPap;
+      if (numericYr < 10 && pap.length === 2) {
+        // Pre-2010: Extract second digit of 2-digit variant (e.g., '12' -> '2')
+        cleanPap = pap.charAt(1);
+      } else {
+        // Post-2010 or 1-digit input: Strip leading zeros (e.g., '02' -> '2', '12' -> '12')
+        cleanPap = parseInt(pap, 10).toString();
+      }
+      
+      // 5. Construct final PapaCambridge URL
+      const directMsPdfUrl = `https://pastpapers.papacambridge.com/viewer/caie/${pcLevel}-${folderName}-${sub}-${fullYear}-${monthStr}-${sub}-${seas.toLowerCase()}${yr}-ms-${cleanPap}-pdf`;
       
       fallbackBtn.href = directMsPdfUrl;
       fallbackBtn.style.display = 'block';
@@ -426,12 +441,7 @@ if (!currentPdf) {
       showError("Could not fetch document automatically (pre-2010 limit or network block). Direct Marking Scheme PDF link generated below.");
       return;
     }
-  fallbackBtn.href = directMsPdfUrl;
-  fallbackBtn.style.display = 'block';
-  
-  showError("Could not fetch document automatically (pre-2010 limit or network block). Direct Marking Scheme PDF link generated below.");
-  return;
-}
+
     document.getElementById('viewer-wrap').style.display = 'block';
 
     try {
@@ -580,5 +590,3 @@ if (!currentPdf) {
 </script>
 </body>
 </html>
-
-```
