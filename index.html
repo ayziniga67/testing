@@ -280,61 +280,86 @@
       const rawText = text.toUpperCase();
       document.getElementById('debug-read').innerText = "OCR String: " + rawText.replace(/\n/g, ' ').substring(0, 45);
 
-      // --- FUZZY PARSER LOGIC ---
-      
-      // 1. Clean up common OCR misreads (Normalization)
-      // e.g., OCR reading 'ON' as '0N', or 'S23' as '523'
-      let cleanText = rawText.replace(/0N/g, 'ON').replace(/5(?=[0-3]\d)/g, 'S'); 
+      // Clean string specifically for positional scanning
+      const cleanStr = rawText.replace(/\s+/g, '').replace(/0N/g, 'ON');
 
-      // 2. Extract Subject (Optional - looks for 4 digits not starting with 20)
-      const subMatch = cleanText.match(/\b(\d{4})\b/);
-      if (subMatch && !subMatch[1].startsWith('20')) {
-        document.getElementById('sub-input').value = subMatch[1];
-      }
+      // 1. STAGE 1: OFFICIAL CAMBRIDGE FORMAT PATTERN (e.g. 9618/23/O/N/21 or 9709/12/M/J/20)
+      const officialRegex = /(\d{4})\/(\d{1,2})\/(ON|MJ|FM|O\/N|M\/J|F\/M|S|W|M)\/(\d{2})/i;
+      const exactMatch = cleanStr.match(officialRegex);
 
-      // 3. Extract Season (M/J, O/N, F/M, S, W, M)
-      const seasMatch = cleanText.match(/(ON|MJ|FM|O\/N|M\/J|F\/M|S|W|M)/);
-      if (seasMatch) {
-        const s = seasMatch[1].replace(/\//g, '');
+      if (exactMatch) {
+        // Slot 1: Subject Code (e.g., 9618)
+        document.getElementById('sub-input').value = exactMatch[1];
+        
+        // Slot 2: Paper Code (e.g., 23)
+        document.getElementById('pap-input').value = exactMatch[2];
+        
+        // Slot 3: Series/Season (e.g., O/N -> 'w')
+        const s = exactMatch[3].replace(/\//g, '').toUpperCase();
         if (s === 'ON' || s === 'W') document.getElementById('seas-input').value = 'w';
         else if (s === 'FM' || s === 'M') document.getElementById('seas-input').value = 'm';
         else document.getElementById('seas-input').value = 's';
-      }
+        
+        // Slot 4: Year (e.g., 21)
+        document.getElementById('yr-input').value = exactMatch[4];
 
-      // 4. Extract Year (20XX format, or 2 digits directly following a season letter)
-      let yearMatch = cleanText.match(/20([0-3]\d)/); // e.g., 2021 -> 21
-      let matchedYearString = "";
-      
-      if (yearMatch) {
-        document.getElementById('yr-input').value = yearMatch[1];
-        matchedYearString = yearMatch[0]; // Store '2021' to remove it later
-      } else {
-        const shortYearMatch = cleanText.match(/(?:S|W|M|ON|MJ|FM)[^\d]*([0-3]\d)\b/); // e.g., S23 -> 23
-        if (shortYearMatch) {
-          document.getElementById('yr-input').value = shortYearMatch[1];
-          matchedYearString = shortYearMatch[0]; // Store 'S23' to remove it later
+        // Optional Question Check
+        const qMatch = rawText.match(/Q(?:UESTION)?\s*[-/.:]?\s*(\d{1,2})\b/);
+        if (qMatch) {
+          document.getElementById('q-input').value = qMatch[1];
         }
-      }
 
-      // Remove the identified year text so we don't accidentally extract it again as a paper number
-      let remainingText = cleanText;
-      if (matchedYearString) {
-        remainingText = remainingText.replace(matchedYearString, ' ');
-      }
+      } else {
+        // 2. STAGE 2: FUZZY FALLBACK (for unstandardized formats like "S21 12" or "ON 2021 P22")
+        let cleanText = rawText.replace(/0N/g, 'ON').replace(/5(?=[0-3]\d)/g, 'S'); 
 
-      // 5. Extract Question (OPTIONAL) 
-      // Looks for "Q5", "Q 12", "QUESTION 3". If not found, it skips this block.
-      const qMatch = remainingText.match(/Q(?:UESTION)?\s*[-/.:]?\s*(\d{1,2})\b/);
-      if (qMatch) {
-        document.getElementById('q-input').value = qMatch[1];
-        remainingText = remainingText.replace(qMatch[0], ' '); // Remove Q string from remaining text
-      }
+        // Extract Subject
+        const subMatch = cleanText.match(/\b(\d{4})\b/);
+        if (subMatch && !subMatch[1].startsWith('20')) {
+          document.getElementById('sub-input').value = subMatch[1];
+        }
 
-      // 6. Extract Paper (Any remaining 1 or 2 digit number between 1 and 63)
-      // Because Year and Question are stripped out, the remaining numbers are highly likely to be the paper.
-      const papMatch = remainingText.match(/\b([1-6][0-9]?|[1-9])\b/);
-      if (papMatch) {
-        document.getElementById('pap-input').value = papMatch[1];
+        // Extract Season
+        const seasMatch = cleanText.match(/(ON|MJ|FM|O\/N|M\/J|F\/M|S|W|M)/);
+        if (seasMatch) {
+          const s = seasMatch[1].replace(/\//g, '');
+          if (s === 'ON' || s === 'W') document.getElementById('seas-input').value = 'w';
+          else if (s === 'FM' || s === 'M') document.getElementById('seas-input').value = 'm';
+          else document.getElementById('seas-input').value = 's';
+        }
+
+        // Extract Year
+        let yearMatch = cleanText.match(/20([0-3]\d)/);
+        let matchedYearString = "";
+        
+        if (yearMatch) {
+          document.getElementById('yr-input').value = yearMatch[1];
+          matchedYearString = yearMatch[0];
+        } else {
+          const shortYearMatch = cleanText.match(/(?:S|W|M|ON|MJ|FM)[^\d]*([0-3]\d)\b/);
+          if (shortYearMatch) {
+            document.getElementById('yr-input').value = shortYearMatch[1];
+            matchedYearString = shortYearMatch[0];
+          }
+        }
+
+        let remainingText = cleanText;
+        if (matchedYearString) {
+          remainingText = remainingText.replace(matchedYearString, ' ');
+        }
+
+        // Extract Optional Question
+        const qMatch = remainingText.match(/Q(?:UESTION)?\s*[-/.:]?\s*(\d{1,2})\b/);
+        if (qMatch) {
+          document.getElementById('q-input').value = qMatch[1];
+          remainingText = remainingText.replace(qMatch[0], ' ');
+        }
+
+        // Extract Paper
+        const papMatch = remainingText.match(/\b([1-6][0-9]?|[1-9])\b/);
+        if (papMatch) {
+          document.getElementById('pap-input').value = papMatch[1];
+        }
       }
 
     } catch(err) {
@@ -343,7 +368,6 @@
     
     await runNativeRenderPipeline();
   }
-
   async function fetchPDFResilient(targetUrl) {
     const MY_WORKER_URL = "https://proxy.questionscanner.workers.dev";
     const proxyUrl = `${MY_WORKER_URL}?url=${encodeURIComponent(targetUrl.trim())}`;
