@@ -405,36 +405,27 @@
 
    // Replace lines 276-292 in current working.html with this block
 if (!currentPdf) {
-  clearInterval(loadingInterval);
-  overlay.style.display = 'none';
-  
-  // 1. Determine education level slug
-  let pcLevel = "as-and-a-level";
-  if (sub.startsWith('0') || sub === '0985') { pcLevel = "igcse"; } 
-  else if (/^[2457]/.test(sub)) { pcLevel = "o-level"; }
-  
-  // 2. Fetch subject name slug from subjectNames map
-  const folderName = subjectNames[sub] || "mathematics";
-  
-  // 3. Map series code to month string
-  const monthMap = { 's': 'jun', 'w': 'nov', 'm': 'mar' };
-  const monthStr = monthMap[seas.toLowerCase()] || 'jun';
-  
-  // 4. Format year and paper parameters
-  const numericYr = parseInt(yr, 10);
-
-   let cleanPap;
-      if (numericYr < 10 && pap.length === 2) {
-  // Pre-2010: Take the second digit of a 2-digit input (e.g., '12' becomes '2')
-      cleanPap = pap.charAt(1);
-      } else {
-  // Post-2010 or 1-digit inputs: Convert normally (e.g., '02' becomes '2', '12' stays '12')
-     cleanPap = parseInt(pap, 10).toString();
-}
-  
-  // 5. Construct final PapaCambridge URL
-  const directMsPdfUrl = `https://pastpapers.papacambridge.com/viewer/caie/${pcLevel}-${folderName}-${sub}-${fullYear}-${monthStr}-${sub}-${seas.toLowerCase()}${yr}-ms-${cleanPap}-pdf`;
-  
+      clearInterval(loadingInterval);
+      overlay.style.display = 'none';
+      
+      // Directly link the Marking Scheme (ms) PDF on PapaCambridge matching pre-2010 structure
+      let pcLevel = "as-and-a-level";
+      if (sub.startsWith('0') || sub === '0985') { pcLevel = "igcse"; } 
+      else if (/^[2457]/.test(sub)) { pcLevel = "o-level"; }
+      
+      const folderName = subjectNames[sub] || "mathematics";
+      const monthMap = { 's': 'jun', 'w': 'nov', 'm': 'mar' };
+      const monthStr = monthMap[seas] || 'jun';
+      const cleanPap = parseInt(pap, 10);
+      
+      const directMsPdfUrl = `https://pastpapers.papacambridge.com/viewer/caie/${pcLevel}-${folderName}-${sub}-20${yr}-${monthStr}-${sub}-${seas}${yr}-ms-${cleanPap}-pdf`;
+      
+      fallbackBtn.href = directMsPdfUrl;
+      fallbackBtn.style.display = 'block';
+      
+      showError("Could not fetch document automatically (pre-2010 limit or network block). Direct Marking Scheme PDF link generated below.");
+      return;
+    }
   fallbackBtn.href = directMsPdfUrl;
   fallbackBtn.style.display = 'block';
   
