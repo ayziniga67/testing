@@ -421,8 +421,16 @@ if (!currentPdf) {
   const monthStr = monthMap[seas.toLowerCase()] || 'jun';
   
   // 4. Format year and paper parameters
-  const fullYear = `20${yr}`;
-  const cleanPap = parseInt(pap, 10);
+  const numericYr = parseInt(yr, 10);
+
+   let cleanPap;
+      if (numericYr < 10 && pap.length === 2) {
+  // Pre-2010: Take the second digit of a 2-digit input (e.g., '12' becomes '2')
+      cleanPap = pap.charAt(1);
+      } else {
+  // Post-2010 or 1-digit inputs: Convert normally (e.g., '02' becomes '2', '12' stays '12')
+     cleanPap = parseInt(pap, 10).toString();
+}
   
   // 5. Construct final PapaCambridge URL
   const directMsPdfUrl = `https://pastpapers.papacambridge.com/viewer/caie/${pcLevel}-${folderName}-${sub}-${fullYear}-${monthStr}-${sub}-${seas.toLowerCase()}${yr}-ms-${cleanPap}-pdf`;
