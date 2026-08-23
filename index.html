@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Leakbridge - Question Scanner</title>
+  <title>Leakbridge - AI Scanner</title>
   <script src="https://unpkg.com/tesseract.js@4.0.2/dist/tesseract.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght=300;400;600;700&display=swap" rel="stylesheet">
@@ -59,31 +59,9 @@
     .loading-placeholder { font-size: 0.8rem; color: #475569; font-weight: 400; text-transform: uppercase; letter-spacing: 0.5px; animation: pulse 1.5s infinite; }
     @keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.9; } }
 
-    /* --- NEW KEYWORD FINDER STYLES --- */
-    .mode-toggle-wrapper {
-      display: flex;
-      background: var(--card);
-      border-radius: 10px;
-      padding: 4px;
-      margin-bottom: 15px;
-      border: 1px solid rgba(255,255,255,0.05);
-    }
-    .mode-btn {
-      flex: 1;
-      background: transparent;
-      color: #64748b;
-      border: none;
-      padding: 8px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: 0.3s;
-    }
-    .mode-btn.active {
-      background: var(--accent);
-      color: var(--bg);
-    }
+    .mode-toggle-wrapper { display: flex; background: var(--card); border-radius: 10px; padding: 4px; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.05); }
+    .mode-btn { flex: 1; background: transparent; color: #64748b; border: none; padding: 8px; font-size: 0.75rem; font-weight: 600; border-radius: 6px; cursor: pointer; transition: 0.3s; }
+    .mode-btn.active { background: var(--accent); color: var(--bg); }
   </style>
 </head>
 <body>
@@ -94,12 +72,11 @@
   
 <div class="container">
   
-  <!-- APP MODE TOGGLE -->
   <button class="btn btn-sub" onclick="toggleMainAppView()" id="app-view-toggle" style="width: 100%; margin-bottom: 15px; font-size: 0.75rem; background: #475569;">
     SWITCH TO KEYWORD FINDER 🔍
   </button>
 
-  <!-- NEW KEYWORD FINDER VIEW WRAPPER (Hidden by default) -->
+  <!-- KEYWORD FINDER VIEW -->
   <div id="keyword-finder-view" style="display: none;">
     <div class="mode-toggle-wrapper">
       <button class="mode-btn active" id="btn-math" onclick="switchMode('math')">📐 Math & Science</button>
@@ -138,10 +115,9 @@
 
     <button class="btn btn-main" onclick="startKeywordSearch()" style="margin-bottom: 15px; width: 100%;">🔍 LOCATE QUESTION VIA KEYWORDS</button>
   </div>
-  <!-- END OF KEYWORD FINDER VIEW -->
 
 
-  <!-- EXISTING SCANNER VIEW WRAPPER -->
+  <!-- CAMERA SCANNER VIEW -->
   <div id="scanner-view">
     <div class="settings-bar">
       <div class="input-row">
@@ -192,12 +168,11 @@
       <button class="btn btn-sub btn-reset" onclick="resetCameraSystem()">START/RESET CAMERA</button>
     </div>
   </div>
-  <!-- END OF SCANNER VIEW -->
 
   <div id="error-banner"></div>
-  <a id="papacambridge-fallback" class="btn btn-fallback" target="_blank" href="#">OPEN MARKING SCHEME PDF (PAPACAMBRIDGE)</a>
+  <a id="papacambridge-fallback" class="btn btn-fallback" target="_blank" href="#">OPEN MARKING SCHEME PDF</a>
 
-  <!-- SHARED VIEWER WRAPPER -->
+  <!-- VIEWER WRAPPER -->
   <div class="viewer-wrap" id="viewer-wrap">
     <div id="info-bar">
         <span id="paper-id" style="color:var(--accent); font-weight:bold;"></span>
@@ -212,6 +187,8 @@
 <script>
   pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
   
+  const MY_WORKER_URL = "https://proxy.questionscanner.workers.dev"; // Your Cloudflare Worker URL
+
   const subjectNames = {
     "9709": "mathematics", "9702": "physics", "9701": "chemistry", "9700": "biology",
     "9618": "computer-science", "9708": "economics", "9706": "accounting", "9609": "business",
@@ -221,22 +198,6 @@
     "7707": "accounting", "4024": "mathematics-d", "5054": "physics", "5070": "chemistry",
     "5090": "biology", "2210": "computer-science", "2281": "economics", "7115": "business-studies"
   };
-
-  const paperSources = [
-    {
-      name: "BestExamHelp",
-      buildUrl: (sub, yr, seas, pap) => {
-        let levelFolder = "cambridge-international-a-level";
-        if (sub.startsWith('0') || sub === '0985') { levelFolder = "cambridge-igcse"; } 
-        else if (/^[2457]/.test(sub)) { levelFolder = "cambridge-o-level"; }
-        
-        const folderName = subjectNames[sub] || "subject";
-        const fullYear = `20${yr}`;
-        
-        return `https://bestexamhelp.com/exam/${levelFolder}/${folderName}-${sub}/${fullYear}/${sub}_${seas}${yr}_ms_${pap}.pdf`;
-      }
-    }
-  ];
   
   const video = document.getElementById('video');
   const canvas = document.getElementById('canvas');
@@ -248,8 +209,6 @@
   let ocrWorker = null;
   let currentPdf = null;
   let scrollObserver = null;
-
-  // --- NEW: MAIN APP VIEW TOGGLE LOGIC ---
   let isKeywordFinderActive = false;
 
   function toggleMainAppView() {
@@ -259,25 +218,19 @@
       document.getElementById('scanner-view').style.display = 'none';
       document.getElementById('keyword-finder-view').style.display = 'block';
       document.getElementById('app-view-toggle').innerText = "SWITCH TO CAMERA SCANNER 📷";
-      stopCam(); // Free camera if switching to search mode
+      stopCam();
     } else {
       document.getElementById('scanner-view').style.display = 'block';
       document.getElementById('keyword-finder-view').style.display = 'none';
       document.getElementById('app-view-toggle').innerText = "SWITCH TO KEYWORD FINDER 🔍";
     }
     
-    // Hide viewer and errors on switch
     document.getElementById('viewer-wrap').style.display = 'none';
     hideError();
   }
 
-  // --- NEW: KEYWORD FINDER MODE STATE & LOGIC ---
-  let currentSearchMode = 'math';
-
   function switchMode(mode) {
-    currentSearchMode = mode;
     const keywordInput = document.getElementById('kf-keyword');
-    
     document.getElementById('btn-math').classList.remove('active');
     document.getElementById('btn-hum').classList.remove('active');
     document.getElementById(`btn-${mode}`).classList.add('active');
@@ -289,9 +242,82 @@
     }
   }
 
-  function startKeywordSearch() {
-    // Placeholder function for when we hook up PDF.js + Groq API next
-    alert("Keyword search logic will go here! Current mode: " + currentSearchMode + "\n\nReady to build the Groq logic!");
+  // --- THE NEW AI SEARCH LOGIC ---
+  async function startKeywordSearch() {
+    hideError();
+    const sub = document.getElementById('kf-sub').value.trim();
+    const yr = document.getElementById('kf-yr').value.trim();
+    const seas = document.getElementById('kf-seas').value.trim().toLowerCase();
+    const pap = document.getElementById('kf-pap').value.trim();
+    const keyword = document.getElementById('kf-keyword').value.trim();
+
+    if (!keyword) {
+      showError("Please enter keywords to search.");
+      return;
+    }
+
+    // Force the scanner view's overlay to show up over the media box area
+    document.getElementById('scanner-view').style.display = 'block';
+    document.getElementById('keyword-finder-view').style.display = 'none';
+    document.getElementById('app-view-toggle').innerText = "SWITCH TO KEYWORD FINDER 🔍";
+    
+    overlay.style.display = 'flex';
+    document.getElementById('viewer-wrap').style.display = 'none';
+
+    try {
+      updateProg(20, "Fetching Question Paper...");
+      let levelFolder = "cambridge-international-a-level";
+      if (sub.startsWith('0') || sub === '0985') levelFolder = "cambridge-igcse";
+      else if (/^[2457]/.test(sub)) levelFolder = "cambridge-o-level";
+      
+      const folderName = subjectNames[sub] || "subject";
+      const qpUrl = `https://bestexamhelp.com/exam/${levelFolder}/${folderName}-${sub}/20${yr}/${sub}_${seas}${yr}_qp_${pap}.pdf`;
+      
+      // Fetch the Question Paper to read text
+      const qpDoc = await fetchPDFResilient(qpUrl);
+      
+      updateProg(50, "Extracting Text (Powered by PDF.js)...");
+      let fullQpText = "";
+      for(let i = 1; i <= qpDoc.numPages; i++){
+          const page = await qpDoc.getPage(i);
+          const textContent = await page.getTextContent();
+          fullQpText += textContent.items.map(item => item.str).join(" ") + " ";
+      }
+
+      updateProg(75, "Locating Question via Groq AI...");
+      
+      // Securely call your Cloudflare Worker backend
+      const aiResponse = await fetch(`${MY_WORKER_URL}/api/find-question`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ keyword, text: fullQpText })
+      });
+
+      if (!aiResponse.ok) throw new Error("AI Backend returned an error.");
+      
+      const aiData = await aiResponse.json();
+      
+      // Parse Groq's text output to grab just the raw number
+      const aiText = aiData.choices[0].message.content.trim();
+      const targetQ = aiText.match(/\d+/)?.[0] || "1";
+
+      updateProg(90, `Located Q${targetQ}! Loading Marking Scheme...`);
+      
+      // Populate the main scanner text boxes
+      document.getElementById('sub-input').value = sub;
+      document.getElementById('yr-input').value = yr;
+      document.getElementById('seas-input').value = seas;
+      document.getElementById('pap-input').value = pap;
+      document.getElementById('q-input').value = targetQ;
+
+      // Pass control to the existing rendering pipeline to pull up the MS
+      setTimeout(runNativeRenderPipeline, 500);
+
+    } catch (err) {
+      overlay.style.display = 'none';
+      showError("Search failed: " + err.message);
+      toggleMainAppView(); // Send them back to the search view if it fails
+    }
   }
 
 
@@ -417,21 +443,15 @@
         if (s === 'ON' || s === 'W') document.getElementById('seas-input').value = 'w';
         else if (s === 'FM' || s === 'M') document.getElementById('seas-input').value = 'm';
         else document.getElementById('seas-input').value = 's';
-        
         document.getElementById('yr-input').value = exactMatch[4];
 
         const qMatch = rawText.match(/Q(?:UESTION)?\s*[-/.:]?\s*(\d{1,2})\b/);
-        if (qMatch) {
-          document.getElementById('q-input').value = qMatch[1];
-        }
-
+        if (qMatch) document.getElementById('q-input').value = qMatch[1];
       } else {
         let cleanText = rawText.replace(/0N/g, 'ON').replace(/5(?=[0-3]\d)/g, 'S'); 
 
         const subMatch = cleanText.match(/\b(\d{4})\b/);
-        if (subMatch && !subMatch[1].startsWith('20')) {
-          document.getElementById('sub-input').value = subMatch[1];
-        }
+        if (subMatch && !subMatch[1].startsWith('20')) document.getElementById('sub-input').value = subMatch[1];
 
         const seasMatch = cleanText.match(/(ON|MJ|FM|O\/N|M\/J|F\/M|S|W|M)/);
         if (seasMatch) {
@@ -456,9 +476,7 @@
         }
 
         let remainingText = cleanText;
-        if (matchedYearString) {
-          remainingText = remainingText.replace(matchedYearString, ' ');
-        }
+        if (matchedYearString) remainingText = remainingText.replace(matchedYearString, ' ');
 
         const qMatch = remainingText.match(/Q(?:UESTION)?\s*[-/.:]?\s*(\d{1,2})\b/);
         if (qMatch) {
@@ -467,9 +485,7 @@
         }
 
         const papMatch = remainingText.match(/\b([1-6][0-9]?|[1-9])\b/);
-        if (papMatch) {
-          document.getElementById('pap-input').value = papMatch[1];
-        }
+        if (papMatch) document.getElementById('pap-input').value = papMatch[1];
       }
 
     } catch(err) {
@@ -480,9 +496,7 @@
   }
   
   async function fetchPDFResilient(targetUrl) {
-    const MY_WORKER_URL = "https://proxy.questionscanner.workers.dev";
     const proxyUrl = `${MY_WORKER_URL}?url=${encodeURIComponent(targetUrl.trim())}`;
-
     const response = await fetch(proxyUrl);
     if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
     
@@ -505,27 +519,6 @@
     const pap = document.getElementById('pap-input').value.trim();
     const targetQ = document.getElementById('q-input').value.trim() || "1";
 
-    if (!/^\d{4}$/.test(sub)) {
-      showError("Validation Error: Subject must be exactly 4 numeric digits (e.g., 0580 or 9702).");
-      return;
-    }
-    if (!/^\d{2}$/.test(yr)) {
-      showError("Validation Error: Year must be exactly 2 numeric digits (e.g., 25).");
-      return;
-    }
-    if (!/^[swm]$/i.test(seas)) {
-      showError("Validation Error: Series must be a single letter: 's', 'w', or 'm'.");
-      return;
-    }
-    if (!/^\d{2}$/.test(pap)) {
-      showError("Validation Error: Paper must be exactly 2 numeric digits (e.g., 12).");
-      return;
-    }
-    if (!/^\d{1,2}$/.test(targetQ) || parseInt(targetQ, 10) <= 0) {
-      showError("Validation Error: Target Question must be a positive integer between 1 and 99.");
-      return;
-    }
-
     overlay.style.display = 'flex';
     document.getElementById('viewer-wrap').style.display = 'none';
     fallbackBtn.style.display = 'none';
@@ -538,11 +531,7 @@
     track.innerHTML = ''; 
     if(scrollObserver) scrollObserver.disconnect();
 
-    const loadingPhrases = [
-      "leaking the paper...",
-      "giving the paper to redditors...",
-      "ruining careers..."
-    ];
+    const loadingPhrases = ["leaking the paper...", "giving the paper to redditors...", "ruining careers..."];
     let phraseIndex = 0;
     updateProg(50, loadingPhrases[phraseIndex]);
 
@@ -556,48 +545,29 @@
     }, 10000);
     
     currentPdf = null; 
+    let levelFolder = "cambridge-international-a-level";
+    if (sub.startsWith('0') || sub === '0985') levelFolder = "cambridge-igcse"; 
+    else if (/^[2457]/.test(sub)) levelFolder = "cambridge-o-level";
+    const folderName = subjectNames[sub] || "subject";
+    const fullYear = `20${yr}`;
+    const msUrl = `https://bestexamhelp.com/exam/${levelFolder}/${folderName}-${sub}/${fullYear}/${sub}_${seas}${yr}_ms_${pap}.pdf`;
 
-    for (let i = 0; i < paperSources.length; i++) {
-      const source = paperSources[i];
-      const generatedUrl = source.buildUrl(sub, yr, seas, pap);
-      updateProg(55 + (i * 10), `Trying ${source.name}...`);
-      
-      try {
-        currentPdf = await fetchPDFResilient(generatedUrl);
-        break; 
-      } catch (e) {
-        console.warn(`Fallback: ${source.name} failed.`);
-      }
-    }
-
-    if (!currentPdf) {
+    try {
+      currentPdf = await fetchPDFResilient(msUrl);
+    } catch (e) {
       clearInterval(loadingInterval);
       overlay.style.display = 'none';
       
       let pcLevel = "as-and-a-level";
-      if (sub.startsWith('0') || sub === '0985') { pcLevel = "igcse"; } 
-      else if (/^[2457]/.test(sub)) { pcLevel = "o-level"; }
-      
-      const folderName = subjectNames[sub] || "mathematics";
+      if (sub.startsWith('0') || sub === '0985') pcLevel = "igcse";
+      else if (/^[2457]/.test(sub)) pcLevel = "o-level";
       const monthMap = { 's': 'jun', 'w': 'nov', 'm': 'mar' };
       const monthStr = monthMap[seas.toLowerCase()] || 'jun';
+      let cleanPap = (parseInt(yr, 10) < 10 && pap.length === 2) ? pap.charAt(1) : parseInt(pap, 10).toString();
       
-      const fullYear = `20${yr}`;
-      const numericYr = parseInt(yr, 10);
-      
-      let cleanPap;
-      if (numericYr < 10 && pap.length === 2) {
-        cleanPap = pap.charAt(1);
-      } else {
-        cleanPap = parseInt(pap, 10).toString();
-      }
-      
-      const directMsPdfUrl = `https://pastpapers.papacambridge.com/viewer/caie/${pcLevel}-${folderName}-${sub}-${fullYear}-${monthStr}-${sub}-${seas.toLowerCase()}${yr}-ms-${cleanPap}-pdf`;
-      
-      fallbackBtn.href = directMsPdfUrl;
+      fallbackBtn.href = `https://pastpapers.papacambridge.com/viewer/caie/${pcLevel}-${folderName}-${sub}-${fullYear}-${monthStr}-${sub}-${seas.toLowerCase()}${yr}-ms-${cleanPap}-pdf`;
       fallbackBtn.style.display = 'block';
-      
-      showError("Could not fetch document automatically. Direct Marking Scheme PDF link generated below.");
+      showError("Could not fetch document automatically. Direct link generated below.");
       return;
     }
 
@@ -612,51 +582,28 @@
         if (foundMatch) break;
         const page = await currentPdf.getPage(i);
         const content = await page.getTextContent();
+        const fullPageText = content.items.filter(item => item && typeof item.str === 'string').map(item => item.str).join(' ').toUpperCase(); 
         
-        const fullPageText = content.items
-          .filter(item => item && typeof item.str === 'string')
-          .map(item => item.str)
-          .join(' ')
-          .toUpperCase(); 
-        
-        if (fullPageText.includes("ANNOTATION") || 
-            fullPageText.includes("SPECIFIC MARKING INSTRUCTIONS") ||
-            (fullPageText.includes("GENERIC MARKING") && i <= 3)) {
-          continue; 
-        }
+        if (fullPageText.includes("ANNOTATION") || fullPageText.includes("SPECIFIC MARKING INSTRUCTIONS") || (fullPageText.includes("GENERIC MARKING") && i <= 3)) continue; 
 
         const leftColumnList = content.items.filter(item => {
           if (!item || typeof item.str !== 'string') return false;
-          const itemX = item.transform ? item.transform[4] : 0;
-          return itemX >= 20 && itemX < 95;
+          return (item.transform ? item.transform[4] : 0) >= 20 && (item.transform ? item.transform[4] : 0) < 95;
         });
 
         for (let item of leftColumnList) {
           const rawStr = item.str.trim();
-          if (!rawStr) continue;
+          if (!rawStr || /PAGE|MARK|TOTAL|SUBJECT/i.test(rawStr)) continue;
+          if (new RegExp('^1(?!\\d)', 'i').test(rawStr)) if(fallbackPage === 2) fallbackPage = i; 
           
-          if (/PAGE|MARK|TOTAL|SUBJECT/i.test(rawStr)) continue;
-
-          if (new RegExp('^1(?!\\d)', 'i').test(rawStr)) {
-            if(fallbackPage === 2) fallbackPage = i; 
-          }
-
-          const exactTargetRegex = new RegExp('^0?' + targetQ + '(?!\\d)', 'i');
-          
-          if (exactTargetRegex.test(rawStr)) {
-            matchedPage = i;
-            foundMatch = true;
-            break;
+          if (new RegExp('^0?' + targetQ + '(?!\\d)', 'i').test(rawStr)) {
+            matchedPage = i; foundMatch = true; break;
           }
         }
       }
 
-      if (!foundMatch) {
-         matchedPage = fallbackPage <= currentPdf.numPages ? fallbackPage : 1;
-         document.getElementById('match-status').innerText = `Target Q Not Found - Defaulted to Pg ${matchedPage}`;
-      } else {
-         document.getElementById('match-status').innerText = `Focused Page ${matchedPage}`;
-      }
+      matchedPage = foundMatch ? matchedPage : (fallbackPage <= currentPdf.numPages ? fallbackPage : 1);
+      document.getElementById('match-status').innerText = foundMatch ? `Focused Page ${matchedPage}` : `Target Q Not Found - Defaulted to Pg ${matchedPage}`;
 
       scrollObserver = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
@@ -677,21 +624,13 @@
         navBar.appendChild(navBtn);
 
         const section = document.createElement('div');
-        section.id = `page-sec-${i}`;
-        section.className = 'page-section';
-        section.dataset.page = i;
+        section.id = `page-sec-${i}`; section.className = 'page-section'; section.dataset.page = i;
         section.innerHTML = `<div class="page-badge">PAGE ${i}</div><span class="loading-placeholder" id="loader-txt-${i}">Scroll to View</span>`;
-        
-        track.appendChild(section);
-        scrollObserver.observe(section);
+        track.appendChild(section); scrollObserver.observe(section);
       }
 
       updateProg(100, "Sync Complete.");
-      
-      setTimeout(() => {
-        overlay.style.display = 'none';
-        jumpToSection(matchedPage);
-      }, 150);
+      setTimeout(() => { overlay.style.display = 'none'; jumpToSection(matchedPage); }, 150);
 
     } catch (err) {
       document.getElementById('match-status').innerText = "Analysis Failed";
@@ -706,23 +645,17 @@
       if (!section || section.querySelector('canvas')) return;
 
       const page = await currentPdf.getPage(pageNum);
-      const renderScale = window.devicePixelRatio || 2.0;
-      const viewport = page.getViewport({ scale: renderScale });
-      
+      const viewport = page.getViewport({ scale: window.devicePixelRatio || 2.0 });
       const pageCanvas = document.createElement('canvas');
       const ctx = pageCanvas.getContext('2d');
-      
-      pageCanvas.height = viewport.height;
-      pageCanvas.width = viewport.width;
+      pageCanvas.height = viewport.height; pageCanvas.width = viewport.width;
 
       await page.render({ canvasContext: ctx, viewport: viewport }).promise;
       
       const placeholder = document.getElementById(`loader-txt-${pageNum}`);
       if (placeholder) placeholder.remove();
       section.appendChild(pageCanvas);
-    } catch (e) {
-      console.error(`Dynamic viewport error on page ${pageNum}:`, e);
-    }
+    } catch (e) {}
   }
 
   function jumpToSection(pageIndex) {
@@ -743,8 +676,7 @@
   }
 
   function updateProg(pct, msg) {
-    prog.style.width = pct + "%";
-    document.getElementById('status-txt').innerText = msg;
+    prog.style.width = pct + "%"; document.getElementById('status-txt').innerText = msg;
   }
 </script>
 </body>
