@@ -243,18 +243,124 @@
   }
 
   // --- THE NEW AI SEARCH LOGIC ---
+  // --- KEYWORD FINDER ENGINE & SUCCESS STATE HAND-OFF ---
   async function startKeywordSearch() {
     hideError();
+
     const sub = document.getElementById('kf-sub').value.trim();
     const yr = document.getElementById('kf-yr').value.trim();
     const seas = document.getElementById('kf-seas').value.trim().toLowerCase();
     const pap = document.getElementById('kf-pap').value.trim();
     const keyword = document.getElementById('kf-keyword').value.trim();
 
-    if (!keyword) {
-      showError("Please enter keywords to search.");
+    // 1. Input Validation
+    if (!/^\d{4}$/.test(sub)) {
+      showError("Keyword Search Error: Subject must be 4 numeric digits (e.g. 9709).");
       return;
     }
+    if (!/^\d{2}$/.test(yr)) {
+      showError("Keyword Search Error: Year must be 2 numeric digits (e.g. 21).");
+      return;
+    }
+    if (!/^[swm]$/i.test(seas)) {
+      showError("Keyword Search Error: Series must be 's', 'w', or 'm'.");
+      return;
+    }
+    if (!/^\d{2}$/.test(pap)) {
+      showError("Keyword Search Error: Paper must be 2 numeric digits (e.g. 12).");
+      return;
+    }
+    if (keyword.length < 3) {
+      showError("Keyword Search Error: Please enter at least 3 distinct letters or numbers from the question.");
+      return;
+    }
+
+    // 2. Show Overlay Progress
+    overlay.style.display = 'flex';
+    updateProg(15, "Fetching Question Paper (QP)...");
+
+    try {
+      // 3. Build Question Paper (QP) URL
+      let levelFolder = "cambridge-international-a-level";
+      if (sub.startsWith('0') || sub === '0985') { levelFolder = "cambridge-igcse"; } 
+      else if (/^[2457]/.test(sub)) { levelFolder = "cambridge-o-level"; }
+      
+      const folderName = subjectNames[sub] || "subject";
+      const fullYear = `20${yr}`;
+      const qpUrl = `https://bestexamhelp.com/exam/${levelFolder}/${folderName}-${sub}/${fullYear}/${sub}_${seas}${yr}_qp_${pap}.pdf`;
+
+      updateProg(35, "Downloading QP Document...");
+      const qpPdf = await fetchPDFResilient(qpUrl);
+
+      updateProg(60, "Scanning Pages for Keywords...");
+      
+      const cleanKeywords = keyword.toUpperCase().replace(/[^\w\s]/gi, '').split(/\s+/).filter(w => w.length > 2);
+      let bestMatchPage = 1;
+      let highestMatchCount = 0;
+      let detectedQuestionNum = null;
+
+      // 4. Page Keyword Scan
+      for (let i = 1; i <= qpPdf.numPages; i++) {
+        const page = await qpPdf.getPage(i);
+        const textContent = await page.getTextContent();
+        const pageText = textContent.items
+          .filter(item => item && typeof item.str === 'string')
+          .map(item => item.str)
+          .join(' ')
+          .toUpperCase();
+
+        let matches = 0;
+        cleanKeywords.forEach(kw => {
+          if (pageText.includes(kw)) matches++;
+        });
+
+        if (matches > highestMatchCount) {
+          highestMatchCount = matches;
+          bestMatchPage = i;
+
+          // Look for Question Number on matching page (Left margin / text headers)
+          const qNumberMatch = pageText.match(/(?:QUESTION|\bQ)?\s*([1-9][0-9]?)\s*[\(\[\.\s]/);
+          if (qNumberMatch) {
+            detectedQuestionNum = qNumberMatch[1];
+          }
+        }
+      }
+
+      // Default fallback if no clear number is isolated
+      if (!detectedQuestionNum) {
+        detectedQuestionNum = "1";
+      }
+
+      // 5. SUCCESS STATE: Hand-off values to Main Program
+      updateProg(90, `MATCH FOUND! (Question ${detectedQuestionNum})`);
+
+      // Automatically sync input values to the primary scanner inputs
+      document.getElementById('sub-input').value = sub;
+      document.getElementById('yr-input').value = yr;
+      document.getElementById('seas-input').value = seas;
+      document.getElementById('pap-input').value = pap;
+      document.getElementById('q-input').value = detectedQuestionNum;
+
+      // Switch view back to Scanner / Viewer mode automatically
+      setTimeout(() => {
+        isKeywordFinderActive = false;
+        document.getElementById('keyword-finder-view').style.display = 'none';
+        document.getElementById('scanner-view').style.display = 'block';
+        document.getElementById('app-view-toggle').innerText = "SWITCH TO KEYWORD FINDER 🔍";
+
+        // Display Success Status Banner
+        document.getElementById('match-status').innerText = `✨ Auto-matched Question ${detectedQuestionNum} from Keywords`;
+        
+        // Trigger rendering of Mark Scheme PDF automatically
+        runNativeRenderPipeline();
+      }, 500);
+
+    } catch (err) {
+      console.error("Keyword Search Error:", err);
+      overlay.style.display = 'none';
+      showError("Could not locate question from provided keywords. Please verify your metadata or try different keywords.");
+    }
+  }
 
     // Force the scanner view's overlay to show up over the media box area
     document.getElementById('scanner-view').style.display = 'block';
