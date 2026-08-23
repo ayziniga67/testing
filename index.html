@@ -58,6 +58,32 @@
     .page-section canvas { max-width: 100%; max-height: 100%; width: auto; height: auto; display: block; background: white; image-rendering: -webkit-optimize-contrast; }
     .loading-placeholder { font-size: 0.8rem; color: #475569; font-weight: 400; text-transform: uppercase; letter-spacing: 0.5px; animation: pulse 1.5s infinite; }
     @keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.9; } }
+
+    /* --- NEW KEYWORD FINDER STYLES --- */
+    .mode-toggle-wrapper {
+      display: flex;
+      background: var(--card);
+      border-radius: 10px;
+      padding: 4px;
+      margin-bottom: 15px;
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+    .mode-btn {
+      flex: 1;
+      background: transparent;
+      color: #64748b;
+      border: none;
+      padding: 8px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    .mode-btn.active {
+      background: var(--accent);
+      color: var(--bg);
+    }
   </style>
 </head>
 <body>
@@ -67,59 +93,111 @@
   </div>
   
 <div class="container">
-  <div class="settings-bar">
-    <div class="input-row">
-      <div class="input-group">
-        <label>Subject</label>
-        <span class="input-example">e.g. 9709</span>
-        <input type="text" id="sub-input" value="9709" maxlength="4">
+  
+  <!-- APP MODE TOGGLE -->
+  <button class="btn btn-sub" onclick="toggleMainAppView()" id="app-view-toggle" style="width: 100%; margin-bottom: 15px; font-size: 0.75rem; background: #475569;">
+    SWITCH TO KEYWORD FINDER 🔍
+  </button>
+
+  <!-- NEW KEYWORD FINDER VIEW WRAPPER (Hidden by default) -->
+  <div id="keyword-finder-view" style="display: none;">
+    <div class="mode-toggle-wrapper">
+      <button class="mode-btn active" id="btn-math" onclick="switchMode('math')">📐 Math & Science</button>
+      <button class="mode-btn" id="btn-hum" onclick="switchMode('hum')">📚 Humanities</button>
+    </div>
+
+    <div class="settings-bar">
+      <div class="input-row">
+        <div class="input-group">
+          <label>Subject</label>
+          <span class="input-example">e.g. 9709</span>
+          <input type="text" id="kf-sub" value="9709" maxlength="4">
+        </div>
+        <div class="input-group">
+          <label>Year</label>
+          <span class="input-example">e.g. 21</span>
+          <input type="text" id="kf-yr" value="21" maxlength="2">
+        </div>
+        <div class="input-group">
+          <label>Series</label>
+          <span class="input-example">e.g. s</span>
+          <input type="text" id="kf-seas" value="s" maxlength="1">
+        </div>
+        <div class="input-group">
+          <label>Paper</label>
+          <span class="input-example">e.g. 12</span>
+          <input type="text" id="kf-pap" value="12" maxlength="2">
+        </div>
       </div>
-      <div class="input-group">
-        <label>Year</label>
-        <span class="input-example">e.g. 25</span>
-        <input type="text" id="yr-input" value="25" maxlength="2">
-      </div>
-      <div class="input-group">
-        <label>Series</label>
-        <span class="input-example">e.g. s</span>
-        <input type="text" id="seas-input" value="s" maxlength="1">
-      </div>
-      <div class="input-group">
-        <label>Paper</label>
-        <span class="input-example">e.g. 12</span>
-        <input type="text" id="pap-input" value="12" maxlength="2">
-      </div>
-      <div class="input-group">
-        <label>Target Q</label>
-        <span class="input-example">e.g. 5</span>
-        <input type="text" id="q-input" value="1" maxlength="2">
+      
+      <div class="input-group" style="margin-top: 10px; width: 100%;">
+        <label>Question Keywords</label>
+        <input type="text" id="kf-keyword" placeholder="e.g., Find exact value of theta, given f(x) = 3e^(2x)" style="width: 100%; text-align: left; padding-left: 10px; background: #0f172a; border: 1px solid #334155; color: white; padding: 8px; border-radius: 6px; font-size: 0.85rem;">
       </div>
     </div>
+
+    <button class="btn btn-main" onclick="startKeywordSearch()" style="margin-bottom: 15px; width: 100%;">🔍 LOCATE QUESTION VIA KEYWORDS</button>
   </div>
+  <!-- END OF KEYWORD FINDER VIEW -->
+
+
+  <!-- EXISTING SCANNER VIEW WRAPPER -->
+  <div id="scanner-view">
+    <div class="settings-bar">
+      <div class="input-row">
+        <div class="input-group">
+          <label>Subject</label>
+          <span class="input-example">e.g. 9709</span>
+          <input type="text" id="sub-input" value="9709" maxlength="4">
+        </div>
+        <div class="input-group">
+          <label>Year</label>
+          <span class="input-example">e.g. 25</span>
+          <input type="text" id="yr-input" value="25" maxlength="2">
+        </div>
+        <div class="input-group">
+          <label>Series</label>
+          <span class="input-example">e.g. s</span>
+          <input type="text" id="seas-input" value="s" maxlength="1">
+        </div>
+        <div class="input-group">
+          <label>Paper</label>
+          <span class="input-example">e.g. 12</span>
+          <input type="text" id="pap-input" value="12" maxlength="2">
+        </div>
+        <div class="input-group">
+          <label>Target Q</label>
+          <span class="input-example">e.g. 5</span>
+          <input type="text" id="q-input" value="1" maxlength="2">
+        </div>
+      </div>
+    </div>
+
+    <div id="media-box">
+      <video id="video" autoplay playsinline muted style="display:none;"></video>
+      <canvas id="canvas" style="display:none;"></canvas>
+      <div id="overlay">
+        <div id="status-txt" style="font-weight:700; color:var(--accent);">INITIALIZING...</div>
+        <div class="progress-wrap"><div id="progress-fill"></div></div>
+      </div>
+    </div>
+
+    <div id="log">Ready to Scan Paper</div>
+    <div id="debug-read"></div>
+
+    <div class="btn-grid">
+      <button class="btn btn-main" onclick="doCapture()">CAPTURE & ANALYZE</button>
+      <button class="btn btn-sub" onclick="runNativeRenderPipeline()">FETCH FROM TEXT BOX</button>
+      <label class="btn btn-sub" style="text-align:center; cursor:pointer;">UPLOAD<input type="file" hidden accept="image/*" onchange="doUpload(event)"></label>
+      <button class="btn btn-sub btn-reset" onclick="resetCameraSystem()">START/RESET CAMERA</button>
+    </div>
+  </div>
+  <!-- END OF SCANNER VIEW -->
 
   <div id="error-banner"></div>
-
-   <div id="media-box">
-    <video id="video" autoplay playsinline muted style="display:none;"></video>
-    <canvas id="canvas" style="display:none;"></canvas>
-    <div id="overlay">
-      <div id="status-txt" style="font-weight:700; color:var(--accent);">INITIALIZING...</div>
-      <div class="progress-wrap"><div id="progress-fill"></div></div>
-    </div>
-  </div>
-
-  <div id="log">Ready to Scan Paper</div>
-  <div id="debug-read"></div>
-
-  <div class="btn-grid">
-    <button class="btn btn-main" onclick="doCapture()">CAPTURE & ANALYZE</button>
-    <button class="btn btn-sub" onclick="runNativeRenderPipeline()">FETCH FROM TEXT BOX</button>
-    <label class="btn btn-sub" style="text-align:center; cursor:pointer;">UPLOAD<input type="file" hidden accept="image/*" onchange="doUpload(event)"></label>
-    <button class="btn btn-sub btn-reset" onclick="resetCameraSystem()">START/RESET CAMERA</button>
-  </div>
-
   <a id="papacambridge-fallback" class="btn btn-fallback" target="_blank" href="#">OPEN MARKING SCHEME PDF (PAPACAMBRIDGE)</a>
 
+  <!-- SHARED VIEWER WRAPPER -->
   <div class="viewer-wrap" id="viewer-wrap">
     <div id="info-bar">
         <span id="paper-id" style="color:var(--accent); font-weight:bold;"></span>
@@ -128,6 +206,7 @@
     <div id="pdf-nav-bar"></div>
     <div id="pdf-sections-track"></div>
   </div>
+
 </div>
 
 <script>
@@ -169,6 +248,52 @@
   let ocrWorker = null;
   let currentPdf = null;
   let scrollObserver = null;
+
+  // --- NEW: MAIN APP VIEW TOGGLE LOGIC ---
+  let isKeywordFinderActive = false;
+
+  function toggleMainAppView() {
+    isKeywordFinderActive = !isKeywordFinderActive;
+    
+    if (isKeywordFinderActive) {
+      document.getElementById('scanner-view').style.display = 'none';
+      document.getElementById('keyword-finder-view').style.display = 'block';
+      document.getElementById('app-view-toggle').innerText = "SWITCH TO CAMERA SCANNER 📷";
+      stopCam(); // Free camera if switching to search mode
+    } else {
+      document.getElementById('scanner-view').style.display = 'block';
+      document.getElementById('keyword-finder-view').style.display = 'none';
+      document.getElementById('app-view-toggle').innerText = "SWITCH TO KEYWORD FINDER 🔍";
+    }
+    
+    // Hide viewer and errors on switch
+    document.getElementById('viewer-wrap').style.display = 'none';
+    hideError();
+  }
+
+  // --- NEW: KEYWORD FINDER MODE STATE & LOGIC ---
+  let currentSearchMode = 'math';
+
+  function switchMode(mode) {
+    currentSearchMode = mode;
+    const keywordInput = document.getElementById('kf-keyword');
+    
+    document.getElementById('btn-math').classList.remove('active');
+    document.getElementById('btn-hum').classList.remove('active');
+    document.getElementById(`btn-${mode}`).classList.add('active');
+
+    if (mode === 'math') {
+      keywordInput.placeholder = "e.g., Find exact value of theta, given f(x) = 3e^(2x)";
+    } else {
+      keywordInput.placeholder = "e.g., Using Fig. 1.1, explain the impact of inflation";
+    }
+  }
+
+  function startKeywordSearch() {
+    // Placeholder function for when we hook up PDF.js + Groq API next
+    alert("Keyword search logic will go here! Current mode: " + currentSearchMode + "\n\nReady to build the Groq logic!");
+  }
+
 
   function showError(msg) {
     errorBanner.innerText = msg;
@@ -280,46 +405,34 @@
       const rawText = text.toUpperCase();
       document.getElementById('debug-read').innerText = "OCR String: " + rawText.replace(/\n/g, ' ').substring(0, 45);
 
-      // Clean string specifically for positional scanning
       const cleanStr = rawText.replace(/\s+/g, '').replace(/0N/g, 'ON');
 
-      // 1. STAGE 1: OFFICIAL CAMBRIDGE FORMAT PATTERN (e.g. 9618/23/O/N/21 or 9709/12/M/J/20)
       const officialRegex = /(\d{4})\/(\d{1,2})\/(ON|MJ|FM|O\/N|M\/J|F\/M|S|W|M)\/(\d{2})/i;
       const exactMatch = cleanStr.match(officialRegex);
 
       if (exactMatch) {
-        // Slot 1: Subject Code (e.g., 9618)
         document.getElementById('sub-input').value = exactMatch[1];
-        
-        // Slot 2: Paper Code (e.g., 23)
         document.getElementById('pap-input').value = exactMatch[2];
-        
-        // Slot 3: Series/Season (e.g., O/N -> 'w')
         const s = exactMatch[3].replace(/\//g, '').toUpperCase();
         if (s === 'ON' || s === 'W') document.getElementById('seas-input').value = 'w';
         else if (s === 'FM' || s === 'M') document.getElementById('seas-input').value = 'm';
         else document.getElementById('seas-input').value = 's';
         
-        // Slot 4: Year (e.g., 21)
         document.getElementById('yr-input').value = exactMatch[4];
 
-        // Optional Question Check
         const qMatch = rawText.match(/Q(?:UESTION)?\s*[-/.:]?\s*(\d{1,2})\b/);
         if (qMatch) {
           document.getElementById('q-input').value = qMatch[1];
         }
 
       } else {
-        // 2. STAGE 2: FUZZY FALLBACK (for unstandardized formats like "S21 12" or "ON 2021 P22")
         let cleanText = rawText.replace(/0N/g, 'ON').replace(/5(?=[0-3]\d)/g, 'S'); 
 
-        // Extract Subject
         const subMatch = cleanText.match(/\b(\d{4})\b/);
         if (subMatch && !subMatch[1].startsWith('20')) {
           document.getElementById('sub-input').value = subMatch[1];
         }
 
-        // Extract Season
         const seasMatch = cleanText.match(/(ON|MJ|FM|O\/N|M\/J|F\/M|S|W|M)/);
         if (seasMatch) {
           const s = seasMatch[1].replace(/\//g, '');
@@ -328,7 +441,6 @@
           else document.getElementById('seas-input').value = 's';
         }
 
-        // Extract Year
         let yearMatch = cleanText.match(/20([0-3]\d)/);
         let matchedYearString = "";
         
@@ -348,14 +460,12 @@
           remainingText = remainingText.replace(matchedYearString, ' ');
         }
 
-        // Extract Optional Question
         const qMatch = remainingText.match(/Q(?:UESTION)?\s*[-/.:]?\s*(\d{1,2})\b/);
         if (qMatch) {
           document.getElementById('q-input').value = qMatch[1];
           remainingText = remainingText.replace(qMatch[0], ' ');
         }
 
-        // Extract Paper
         const papMatch = remainingText.match(/\b([1-6][0-9]?|[1-9])\b/);
         if (papMatch) {
           document.getElementById('pap-input').value = papMatch[1];
@@ -368,6 +478,7 @@
     
     await runNativeRenderPipeline();
   }
+  
   async function fetchPDFResilient(targetUrl) {
     const MY_WORKER_URL = "https://proxy.questionscanner.workers.dev";
     const proxyUrl = `${MY_WORKER_URL}?url=${encodeURIComponent(targetUrl.trim())}`;
@@ -463,38 +574,30 @@
       clearInterval(loadingInterval);
       overlay.style.display = 'none';
       
-      // 1. Determine education level slug
       let pcLevel = "as-and-a-level";
       if (sub.startsWith('0') || sub === '0985') { pcLevel = "igcse"; } 
       else if (/^[2457]/.test(sub)) { pcLevel = "o-level"; }
       
-      // 2. Fetch subject name slug from subjectNames map
       const folderName = subjectNames[sub] || "mathematics";
-      
-      // 3. Map series code to month string
       const monthMap = { 's': 'jun', 'w': 'nov', 'm': 'mar' };
       const monthStr = monthMap[seas.toLowerCase()] || 'jun';
       
-      // 4. Extract target paper number based on year format
       const fullYear = `20${yr}`;
       const numericYr = parseInt(yr, 10);
       
       let cleanPap;
       if (numericYr < 10 && pap.length === 2) {
-        // Pre-2010: Extract second digit of 2-digit variant (e.g., '12' -> '2')
         cleanPap = pap.charAt(1);
       } else {
-        // Post-2010 or 1-digit input: Strip leading zeros (e.g., '02' -> '2', '12' -> '12')
         cleanPap = parseInt(pap, 10).toString();
       }
       
-      // 5. Construct final PapaCambridge URL
       const directMsPdfUrl = `https://pastpapers.papacambridge.com/viewer/caie/${pcLevel}-${folderName}-${sub}-${fullYear}-${monthStr}-${sub}-${seas.toLowerCase()}${yr}-ms-${cleanPap}-pdf`;
       
       fallbackBtn.href = directMsPdfUrl;
       fallbackBtn.style.display = 'block';
       
-      showError("Could not fetch document automatically (pre-2010 limit or network block). Direct Marking Scheme PDF link generated below.");
+      showError("Could not fetch document automatically. Direct Marking Scheme PDF link generated below.");
       return;
     }
 
