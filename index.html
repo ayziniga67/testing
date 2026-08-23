@@ -242,8 +242,7 @@
     }
   }
 
-  // --- THE NEW AI SEARCH LOGIC ---
-  // --- KEYWORD FINDER ENGINE & SUCCESS STATE HAND-OFF ---
+// --- KEYWORD FINDER ENGINE & SUCCESS STATE HAND-OFF ---
   async function startKeywordSearch() {
     hideError();
 
@@ -359,70 +358,6 @@
       console.error("Keyword Search Error:", err);
       overlay.style.display = 'none';
       showError("Could not locate question from provided keywords. Please verify your metadata or try different keywords.");
-    }
-  }
-
-    // Force the scanner view's overlay to show up over the media box area
-    document.getElementById('scanner-view').style.display = 'block';
-    document.getElementById('keyword-finder-view').style.display = 'none';
-    document.getElementById('app-view-toggle').innerText = "SWITCH TO KEYWORD FINDER 🔍";
-    
-    overlay.style.display = 'flex';
-    document.getElementById('viewer-wrap').style.display = 'none';
-
-    try {
-      updateProg(20, "Fetching Question Paper...");
-      let levelFolder = "cambridge-international-a-level";
-      if (sub.startsWith('0') || sub === '0985') levelFolder = "cambridge-igcse";
-      else if (/^[2457]/.test(sub)) levelFolder = "cambridge-o-level";
-      
-      const folderName = subjectNames[sub] || "subject";
-      const qpUrl = `https://bestexamhelp.com/exam/${levelFolder}/${folderName}-${sub}/20${yr}/${sub}_${seas}${yr}_qp_${pap}.pdf`;
-      
-      // Fetch the Question Paper to read text
-      const qpDoc = await fetchPDFResilient(qpUrl);
-      
-      updateProg(50, "Extracting Text (Powered by PDF.js)...");
-      let fullQpText = "";
-      for(let i = 1; i <= qpDoc.numPages; i++){
-          const page = await qpDoc.getPage(i);
-          const textContent = await page.getTextContent();
-          fullQpText += textContent.items.map(item => item.str).join(" ") + " ";
-      }
-
-      updateProg(75, "Locating Question via Groq AI...");
-      
-      // Securely call your Cloudflare Worker backend
-      const aiResponse = await fetch(`${MY_WORKER_URL}/api/find-question`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ keyword, text: fullQpText })
-      });
-
-      if (!aiResponse.ok) throw new Error("AI Backend returned an error.");
-      
-      const aiData = await aiResponse.json();
-      
-      // Parse Groq's text output to grab just the raw number
-      const aiText = aiData.choices[0].message.content.trim();
-      const targetQ = aiText.match(/\d+/)?.[0] || "1";
-
-      updateProg(90, `Located Q${targetQ}! Loading Marking Scheme...`);
-      
-      // Populate the main scanner text boxes
-      document.getElementById('sub-input').value = sub;
-      document.getElementById('yr-input').value = yr;
-      document.getElementById('seas-input').value = seas;
-      document.getElementById('pap-input').value = pap;
-      document.getElementById('q-input').value = targetQ;
-
-      // Pass control to the existing rendering pipeline to pull up the MS
-      setTimeout(runNativeRenderPipeline, 500);
-
-    } catch (err) {
-      overlay.style.display = 'none';
-      showError("Search failed: " + err.message);
-      toggleMainAppView(); // Send them back to the search view if it fails
     }
   }
 
