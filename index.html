@@ -235,6 +235,31 @@
     document.getElementById('viewer-wrap').style.display = 'none';
     hideError();
   }
+  // --- ZOOM CONTROL STATE ---
+  let currentZoomScale = 1.0;
+
+  function adjustZoom(amount) {
+    currentZoomScale += amount;
+    // Keep zoom bounded between 50% and 300%
+    if (currentZoomScale < 0.5) currentZoomScale = 0.5;
+    if (currentZoomScale > 3.0) currentZoomScale = 3.0;
+
+    // Update zoom label indicator
+    const indicator = document.getElementById('zoom-level-indicator');
+    if (indicator) {
+      indicator.innerText = `${Math.round(currentZoomScale * 100)}%`;
+    }
+
+    // Re-render currently visible or loaded canvas sections with the new scale
+    document.querySelectorAll('.page-section').forEach(section => {
+      const pageNum = parseInt(section.dataset.page);
+      const existingCanvas = section.querySelector('canvas');
+      if (existingCanvas) {
+        existingCanvas.remove(); // Clear old scaled canvas
+      }
+      executeLazyRender(pageNum); // Re-render with new zoom scale
+    });
+  }
 
   function switchMode(mode) {
     const keywordInput = document.getElementById('kf-keyword');
@@ -690,30 +715,34 @@
     if (!currentPdf) return;
     try {
       const section = document.getElementById(`page-sec-${pageNum}`);
-      if (!section || section.querySelector('canvas')) return;
+      if (!section) return;
+      
+      // Remove any existing canvas so it doesn't duplicate on zoom change
+      const oldCanvas = section.querySelector('canvas');
+      if (oldCanvas) oldCanvas.remove();
 
       const page = await currentPdf.getPage(pageNum);
-      const viewport = page.getViewport({ scale: window.devicePixelRatio || 2.0 });
+      
+      // APPLIED ZOOM SCALE HERE:
+      const baseScale = window.devicePixelRatio || 2.0;
+      const finalScale = baseScale * currentZoomScale;
+      const viewport = page.getViewport({ scale: finalScale });
+      
       const pageCanvas = document.createElement('canvas');
       const ctx = pageCanvas.getContext('2d');
-      pageCanvas.height = viewport.height; pageCanvas.width = viewport.width;
+      
+      pageCanvas.height = viewport.height;
+      pageCanvas.width = viewport.width;
 
       await page.render({ canvasContext: ctx, viewport: viewport }).promise;
       
       const placeholder = document.getElementById(`loader-txt-${pageNum}`);
       if (placeholder) placeholder.remove();
       section.appendChild(pageCanvas);
-    } catch (e) {}
-  }
-
-  function jumpToSection(pageIndex) {
-    const targetSection = document.getElementById(`page-sec-${pageIndex}`);
-    if (targetSection) {
-      targetSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      updateActiveNavHighlight(pageIndex);
+    } catch (e) {
+      console.error(`Dynamic viewport error on page ${pageNum}:`, e);
     }
   }
-
   function updateActiveNavHighlight(pageIndex) {
     document.querySelectorAll('.nav-jump-btn').forEach(btn => btn.classList.remove('active'));
     const activeBtn = document.getElementById(`nav-btn-${pageIndex}`);
