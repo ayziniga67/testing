@@ -176,6 +176,13 @@
   <div class="viewer-wrap" id="viewer-wrap">
     <div id="info-bar">
         <span id="paper-id" style="color:var(--accent); font-weight:bold;"></span>
+        <!-- NEW ZOOM CONTROLS -->
+        <div style="display: flex; gap: 4px; align-items: center;">
+          <button onclick="adjustZoom(-0.25)" class="nav-jump-btn" style="padding: 2px 6px;">🔍-</button>
+          <span id="zoom-level-indicator" style="font-size: 0.7rem; color: #94a3b8;">100%</span>
+          <button onclick="adjustZoom(0.25)" class="nav-jump-btn" style="padding: 2px 6px;">🔍+</button>
+        </div>
+        <!-- END ZOOM CONTROLS -->
         <span id="match-status" style="font-size:0.75rem; color:#94a3b8;"></span>
     </div>
     <div id="pdf-nav-bar"></div>
