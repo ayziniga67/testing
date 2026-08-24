@@ -43,19 +43,25 @@
     #debug-read { display: none; font-size: 0.6rem; color: #475569; text-align: center; margin-bottom: 10px; font-family: monospace; overflow: hidden; height: 12px; }
     
     .viewer-wrap { display: none; width: 100%; margin-top: 10px; background: var(--card); border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); padding: 12px; }
-    #info-bar { display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; margin-bottom: 10px; padding: 0 4px; }
+    #info-bar { display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; margin-bottom: 10px; padding: 0 4px; gap: 8px; }
     
+    /* ZOOM CONTROL STYLING */
+    .zoom-controls { display: flex; align-items: center; gap: 3px; background: #0f172a; padding: 3px 6px; border-radius: 6px; border: 1px solid #334155; }
+    .zoom-btn { background: #1e293b; color: white; border: 1px solid #334155; width: 22px; height: 22px; border-radius: 4px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; transition: 0.15s; }
+    .zoom-btn:hover { background: var(--accent); color: #0f172a; }
+    #zoom-level-indicator { font-size: 0.7rem; color: var(--accent); font-weight: 700; min-width: 36px; text-align: center; }
+
     #pdf-nav-bar { width: 100%; display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 12px; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; }
     #pdf-nav-bar::-webkit-scrollbar { height: 4px; }
     #pdf-nav-bar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
     .nav-jump-btn { background: var(--nav-btn); color: white; border: none; padding: 6px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; cursor: pointer; flex-shrink: 0; transition: 0.2s; }
     .nav-jump-btn.active { background: var(--accent); color: #0f172a; }
 
-    #pdf-sections-track { width: 100%; height: 520px; display: flex; flex-direction: column; gap: 0px; overflow-y: scroll; scroll-snap-type: y mandatory; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; border-radius: 8px; background: #0f172a; border: 1px solid rgba(255,255,255,0.1); }
-    .page-section { width: 100%; height: 100%; min-height: 100%; scroll-snap-align: start; scroll-snap-stop: always; flex-shrink: 0; position: relative; display: flex; align-items: center; justify-content: center; background: #0f172a; overflow: hidden; }
-    .page-badge { position: absolute; top: 12px; left: 12px; background: rgba(15, 23, 42, 0.85); color: var(--accent); font-size: 0.65rem; font-weight: 700; padding: 4px 8px; border-radius: 4px; z-index: 10; border: 1px solid rgba(255,255,255,0.05); }
+    #pdf-sections-track { width: 100%; height: 520px; display: flex; flex-direction: column; gap: 10px; overflow-y: scroll; scroll-snap-type: y mandatory; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; border-radius: 8px; background: #0f172a; border: 1px solid rgba(255,255,255,0.1); padding: 4px; }
+    .page-section { width: 100%; height: 100%; min-height: 100%; scroll-snap-align: start; scroll-snap-stop: always; flex-shrink: 0; position: relative; display: flex; align-items: center; justify-content: center; background: #0f172a; overflow: auto; }
+    .page-badge { position: absolute; top: 12px; left: 12px; background: rgba(15, 23, 42, 0.85); color: var(--accent); font-size: 0.65rem; font-weight: 700; padding: 4px 8px; border-radius: 4px; z-index: 10; border: 1px solid rgba(255,255,255,0.05); pointer-events: none; }
     
-    .page-section canvas { max-width: 100%; max-height: 100%; width: auto; height: auto; display: block; background: white; image-rendering: -webkit-optimize-contrast; }
+    .page-section canvas { display: block; background: white; margin: auto; image-rendering: -webkit-optimize-contrast; transition: width 0.15s ease-out; }
     .loading-placeholder { font-size: 0.8rem; color: #475569; font-weight: 400; text-transform: uppercase; letter-spacing: 0.5px; animation: pulse 1.5s infinite; }
     @keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.9; } }
 
@@ -176,13 +182,15 @@
   <div class="viewer-wrap" id="viewer-wrap">
     <div id="info-bar">
         <span id="paper-id" style="color:var(--accent); font-weight:bold;"></span>
-        <!-- NEW ZOOM CONTROLS -->
-        <div style="display: flex; gap: 4px; align-items: center;">
-          <button onclick="adjustZoom(-0.25)" class="nav-jump-btn" style="padding: 2px 6px;">🔍-</button>
-          <span id="zoom-level-indicator" style="font-size: 0.7rem; color: #94a3b8;">100%</span>
-          <button onclick="adjustZoom(0.25)" class="nav-jump-btn" style="padding: 2px 6px;">🔍+</button>
+        
+        <!-- ZOOM CONTROL UI -->
+        <div class="zoom-controls">
+          <button onclick="adjustZoom(-0.15)" class="zoom-btn" title="Zoom Out">-</button>
+          <span id="zoom-level-indicator">100%</span>
+          <button onclick="adjustZoom(0.15)" class="zoom-btn" title="Zoom In">+</button>
+          <button onclick="resetZoom()" class="zoom-btn" title="Reset Zoom">↺</button>
         </div>
-        <!-- END ZOOM CONTROLS -->
+
         <span id="match-status" style="font-size:0.75rem; color:#94a3b8;"></span>
     </div>
     <div id="pdf-nav-bar"></div>
@@ -194,7 +202,7 @@
 <script>
   pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
   
-  const MY_WORKER_URL = "https://proxy.questionscanner.workers.dev"; // Your Cloudflare Worker URL
+  const MY_WORKER_URL = "https://proxy.questionscanner.workers.dev";
 
   const subjectNames = {
     "9709": "mathematics", "9702": "physics", "9701": "chemistry", "9700": "biology",
@@ -218,6 +226,32 @@
   let scrollObserver = null;
   let isKeywordFinderActive = false;
 
+  // --- ZOOM CONTROL ENGINE ---
+  let currentZoomScale = 1.0;
+
+  function adjustZoom(amount) {
+    currentZoomScale = Math.min(Math.max(0.8, currentZoomScale + amount), 2.5);
+    applyZoom();
+  }
+
+  function resetZoom() {
+    currentZoomScale = 1.0;
+    applyZoom();
+  }
+
+  function applyZoom() {
+    const indicator = document.getElementById('zoom-level-indicator');
+    if (indicator) {
+      indicator.innerText = `${Math.round(currentZoomScale * 100)}%`;
+    }
+    
+    // Scale all active canvases instantly using layout-aware CSS width
+    document.querySelectorAll('.page-section canvas').forEach(pageCanvas => {
+      pageCanvas.style.width = `${100 * currentZoomScale}%`;
+      pageCanvas.style.maxWidth = currentZoomScale <= 1.0 ? '100%' : 'none';
+    });
+  }
+
   function toggleMainAppView() {
     isKeywordFinderActive = !isKeywordFinderActive;
     
@@ -235,31 +269,6 @@
     document.getElementById('viewer-wrap').style.display = 'none';
     hideError();
   }
-  // --- ZOOM CONTROL STATE ---
-  let currentZoomScale = 1.0;
-
-  function adjustZoom(amount) {
-    currentZoomScale += amount;
-    // Keep zoom bounded between 50% and 300%
-    if (currentZoomScale < 0.5) currentZoomScale = 0.5;
-    if (currentZoomScale > 3.0) currentZoomScale = 3.0;
-
-    // Update zoom label indicator
-    const indicator = document.getElementById('zoom-level-indicator');
-    if (indicator) {
-      indicator.innerText = `${Math.round(currentZoomScale * 100)}%`;
-    }
-
-    // Re-render currently visible or loaded canvas sections with the new scale
-    document.querySelectorAll('.page-section').forEach(section => {
-      const pageNum = parseInt(section.dataset.page);
-      const existingCanvas = section.querySelector('canvas');
-      if (existingCanvas) {
-        existingCanvas.remove(); // Clear old scaled canvas
-      }
-      executeLazyRender(pageNum); // Re-render with new zoom scale
-    });
-  }
 
   function switchMode(mode) {
     const keywordInput = document.getElementById('kf-keyword');
@@ -274,7 +283,7 @@
     }
   }
 
-// --- KEYWORD FINDER ENGINE & SUCCESS STATE HAND-OFF ---
+  // --- KEYWORD FINDER ENGINE & HAND-OFF ---
   async function startKeywordSearch() {
     hideError();
 
@@ -284,37 +293,19 @@
     const pap = document.getElementById('kf-pap').value.trim();
     const keyword = document.getElementById('kf-keyword').value.trim();
 
-    // 1. Input Validation
-    if (!/^\d{4}$/.test(sub)) {
-      showError("Keyword Search Error: Subject must be 4 numeric digits (e.g. 9709).");
-      return;
-    }
-    if (!/^\d{2}$/.test(yr)) {
-      showError("Keyword Search Error: Year must be 2 numeric digits (e.g. 21).");
-      return;
-    }
-    if (!/^[swm]$/i.test(seas)) {
-      showError("Keyword Search Error: Series must be 's', 'w', or 'm'.");
-      return;
-    }
-    if (!/^\d{2}$/.test(pap)) {
-      showError("Keyword Search Error: Paper must be 2 numeric digits (e.g. 12).");
-      return;
-    }
-    if (keyword.length < 3) {
-      showError("Keyword Search Error: Please enter at least 3 distinct letters or numbers from the question.");
-      return;
-    }
+    if (!/^\d{4}$/.test(sub)) return showError("Subject must be 4 numeric digits (e.g. 9709).");
+    if (!/^\d{2}$/.test(yr)) return showError("Year must be 2 numeric digits (e.g. 21).");
+    if (!/^[swm]$/i.test(seas)) return showError("Series must be 's', 'w', or 'm'.");
+    if (!/^\d{2}$/.test(pap)) return showError("Paper must be 2 numeric digits (e.g. 12).");
+    if (keyword.length < 3) return showError("Please enter at least 3 distinct letters or numbers.");
 
-    // 2. Show Overlay Progress
     overlay.style.display = 'flex';
     updateProg(15, "Fetching Question Paper (QP)...");
 
     try {
-      // 3. Build Question Paper (QP) URL
       let levelFolder = "cambridge-international-a-level";
-      if (sub.startsWith('0') || sub === '0985') { levelFolder = "cambridge-igcse"; } 
-      else if (/^[2457]/.test(sub)) { levelFolder = "cambridge-o-level"; }
+      if (sub.startsWith('0') || sub === '0985') levelFolder = "cambridge-igcse"; 
+      else if (/^[2457]/.test(sub)) levelFolder = "cambridge-o-level";
       
       const folderName = subjectNames[sub] || "subject";
       const fullYear = `20${yr}`;
@@ -326,11 +317,9 @@
       updateProg(60, "Scanning Pages for Keywords...");
       
       const cleanKeywords = keyword.toUpperCase().replace(/[^\w\s]/gi, '').split(/\s+/).filter(w => w.length > 2);
-      let bestMatchPage = 1;
       let highestMatchCount = 0;
       let detectedQuestionNum = null;
 
-      // 4. Page Keyword Scan
       for (let i = 1; i <= qpPdf.numPages; i++) {
         const page = await qpPdf.getPage(i);
         const textContent = await page.getTextContent();
@@ -341,58 +330,40 @@
           .toUpperCase();
 
         let matches = 0;
-        cleanKeywords.forEach(kw => {
-          if (pageText.includes(kw)) matches++;
-        });
+        cleanKeywords.forEach(kw => { if (pageText.includes(kw)) matches++; });
 
         if (matches > highestMatchCount) {
           highestMatchCount = matches;
-          bestMatchPage = i;
-
-          // Look for Question Number on matching page (Left margin / text headers)
           const qNumberMatch = pageText.match(/(?:QUESTION|\bQ)?\s*([1-9][0-9]?)\s*[\(\[\.\s]/);
-          if (qNumberMatch) {
-            detectedQuestionNum = qNumberMatch[1];
-          }
+          if (qNumberMatch) detectedQuestionNum = qNumberMatch[1];
         }
       }
 
-      // Default fallback if no clear number is isolated
-      if (!detectedQuestionNum) {
-        detectedQuestionNum = "1";
-      }
+      if (!detectedQuestionNum) detectedQuestionNum = "1";
 
-      // 5. SUCCESS STATE: Hand-off values to Main Program
       updateProg(90, `MATCH FOUND! (Question ${detectedQuestionNum})`);
 
-      // Automatically sync input values to the primary scanner inputs
       document.getElementById('sub-input').value = sub;
       document.getElementById('yr-input').value = yr;
       document.getElementById('seas-input').value = seas;
       document.getElementById('pap-input').value = pap;
       document.getElementById('q-input').value = detectedQuestionNum;
 
-      // Switch view back to Scanner / Viewer mode automatically
       setTimeout(() => {
         isKeywordFinderActive = false;
         document.getElementById('keyword-finder-view').style.display = 'none';
         document.getElementById('scanner-view').style.display = 'block';
         document.getElementById('app-view-toggle').innerText = "SWITCH TO KEYWORD FINDER 🔍";
-
-        // Display Success Status Banner
-        document.getElementById('match-status').innerText = `✨ Auto-matched Question ${detectedQuestionNum} from Keywords`;
-        
-        // Trigger rendering of Mark Scheme PDF automatically
+        document.getElementById('match-status').innerText = `✨ Auto-matched Q${detectedQuestionNum}`;
         runNativeRenderPipeline();
       }, 500);
 
     } catch (err) {
       console.error("Keyword Search Error:", err);
       overlay.style.display = 'none';
-      showError("Could not locate question from provided keywords. Please verify your metadata or try different keywords.");
+      showError("Could not locate question from provided keywords.");
     }
   }
-
 
   function showError(msg) {
     errorBanner.innerText = msg;
@@ -458,7 +429,6 @@
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     
     stopCam();
-    
     video.style.display = 'none'; 
     canvas.style.display = 'block';
     processPipeline();
@@ -479,9 +449,7 @@
       img.onload = () => {
         canvas.width = img.width; canvas.height = img.height;
         canvas.getContext('2d').drawImage(img, 0, 0);
-        
         stopCam();
-        
         video.style.display = 'none'; 
         canvas.style.display = 'block';
         processPipeline();
@@ -505,7 +473,6 @@
       document.getElementById('debug-read').innerText = "OCR String: " + rawText.replace(/\n/g, ' ').substring(0, 45);
 
       const cleanStr = rawText.replace(/\s+/g, '').replace(/0N/g, 'ON');
-
       const officialRegex = /(\d{4})\/(\d{1,2})\/(ON|MJ|FM|O\/N|M\/J|F\/M|S|W|M)\/(\d{2})/i;
       const exactMatch = cleanStr.match(officialRegex);
 
@@ -586,6 +553,8 @@
 
   async function runNativeRenderPipeline() {
     hideError();
+    resetZoom(); // Reset zoom scale on new PDF load
+
     const sub = document.getElementById('sub-input').value.trim();
     const yr = document.getElementById('yr-input').value.trim();
     const seas = document.getElementById('seas-input').value.trim().toLowerCase();
@@ -676,7 +645,7 @@
       }
 
       matchedPage = foundMatch ? matchedPage : (fallbackPage <= currentPdf.numPages ? fallbackPage : 1);
-      document.getElementById('match-status').innerText = foundMatch ? `Focused Page ${matchedPage}` : `Target Q Not Found - Defaulted to Pg ${matchedPage}`;
+      document.getElementById('match-status').innerText = foundMatch ? `Focused Page ${matchedPage}` : `Target Q Not Found - Pg ${matchedPage}`;
 
       scrollObserver = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
@@ -715,34 +684,47 @@
     if (!currentPdf) return;
     try {
       const section = document.getElementById(`page-sec-${pageNum}`);
-      if (!section) return;
-      
-      // Remove any existing canvas so it doesn't duplicate on zoom change
-      const oldCanvas = section.querySelector('canvas');
-      if (oldCanvas) oldCanvas.remove();
+      if (!section || section.dataset.rendering === "true") return;
+      section.dataset.rendering = "true";
+
+      let pageCanvas = section.querySelector('canvas');
+      if (!pageCanvas) {
+        pageCanvas = document.createElement('canvas');
+        section.appendChild(pageCanvas);
+      } else {
+        section.dataset.rendering = "false";
+        return; // Canvas already rendered
+      }
 
       const page = await currentPdf.getPage(pageNum);
+      const renderPixelRatio = (window.devicePixelRatio || 1) * 1.5; // High resolution base render
+      const viewport = page.getViewport({ scale: renderPixelRatio });
       
-      // APPLIED ZOOM SCALE HERE:
-      const baseScale = window.devicePixelRatio || 2.0;
-      const finalScale = baseScale * currentZoomScale;
-      const viewport = page.getViewport({ scale: finalScale });
-      
-      const pageCanvas = document.createElement('canvas');
-      const ctx = pageCanvas.getContext('2d');
-      
-      pageCanvas.height = viewport.height;
       pageCanvas.width = viewport.width;
+      pageCanvas.height = viewport.height;
+      
+      pageCanvas.style.width = `${100 * currentZoomScale}%`;
+      pageCanvas.style.maxWidth = currentZoomScale <= 1.0 ? '100%' : 'none';
+      pageCanvas.style.height = 'auto';
 
+      const ctx = pageCanvas.getContext('2d');
       await page.render({ canvasContext: ctx, viewport: viewport }).promise;
       
       const placeholder = document.getElementById(`loader-txt-${pageNum}`);
       if (placeholder) placeholder.remove();
-      section.appendChild(pageCanvas);
+      section.dataset.rendering = "false";
     } catch (e) {
       console.error(`Dynamic viewport error on page ${pageNum}:`, e);
     }
   }
+
+  function jumpToSection(pageNum) {
+    const section = document.getElementById(`page-sec-${pageNum}`);
+    if (section) {
+      section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+
   function updateActiveNavHighlight(pageIndex) {
     document.querySelectorAll('.nav-jump-btn').forEach(btn => btn.classList.remove('active'));
     const activeBtn = document.getElementById(`nav-btn-${pageIndex}`);
