@@ -57,11 +57,13 @@
     .nav-jump-btn { background: var(--nav-btn); color: white; border: none; padding: 6px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; cursor: pointer; flex-shrink: 0; transition: 0.2s; }
     .nav-jump-btn.active { background: var(--accent); color: #0f172a; }
 
-    #pdf-sections-track { width: 100%; height: 520px; display: flex; flex-direction: column; gap: 10px; overflow-y: scroll; scroll-snap-type: y mandatory; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; border-radius: 8px; background: #0f172a; border: 1px solid rgba(255,255,255,0.1); padding: 4px; }
-    .page-section { width: 100%; height: 100%; min-height: 100%; scroll-snap-align: start; scroll-snap-stop: always; flex-shrink: 0; position: relative; display: flex; align-items: center; justify-content: center; background: #0f172a; overflow: auto; }
+    /* FULL VIEWPORT HEIGHT SCROLL TRACK & SECTIONS */
+    #pdf-sections-track { width: 100%; height: 100dvh; display: flex; flex-direction: column; gap: 10px; overflow-y: scroll; scroll-snap-type: y mandatory; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; border-radius: 8px; background: #0f172a; border: 1px solid rgba(255,255,255,0.1); padding: 4px; }
+    .page-section { width: 100%; height: 100dvh; min-height: 100dvh; scroll-snap-align: start; scroll-snap-stop: always; flex-shrink: 0; position: relative; display: flex; align-items: center; justify-content: center; background: #0f172a; overflow-x: auto; overflow-y: hidden; }
     .page-badge { position: absolute; top: 12px; left: 12px; background: rgba(15, 23, 42, 0.85); color: var(--accent); font-size: 0.65rem; font-weight: 700; padding: 4px 8px; border-radius: 4px; z-index: 10; border: 1px solid rgba(255,255,255,0.05); pointer-events: none; }
     
-    .page-section canvas { display: block; background: white; margin: auto; image-rendering: -webkit-optimize-contrast; transition: width 0.15s ease-out; }
+    /* CANVAS FIXED TO VERTICAL VIEWPORT HEIGHT */
+    .page-section canvas { display: block; background: white; margin: auto; height: 100%; width: auto; image-rendering: -webkit-optimize-contrast; transition: height 0.15s ease-out; }
     .loading-placeholder { font-size: 0.8rem; color: #475569; font-weight: 400; text-transform: uppercase; letter-spacing: 0.5px; animation: pulse 1.5s infinite; }
     @keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.9; } }
 
@@ -226,7 +228,7 @@
   let scrollObserver = null;
   let isKeywordFinderActive = false;
 
-  // --- ZOOM CONTROL ENGINE ---
+  // --- ZOOM CONTROL ENGINE (VERTICAL HEIGHT SCALING) ---
   let currentZoomScale = 1.0;
 
   function adjustZoom(amount) {
@@ -245,10 +247,10 @@
       indicator.innerText = `${Math.round(currentZoomScale * 100)}%`;
     }
     
-    // Scale all active canvases instantly using layout-aware CSS width
+    // Dynamically update Canvas Heights to preserve vertical full viewport locking
     document.querySelectorAll('.page-section canvas').forEach(pageCanvas => {
-      pageCanvas.style.width = `${100 * currentZoomScale}%`;
-      pageCanvas.style.maxWidth = currentZoomScale <= 1.0 ? '100%' : 'none';
+      pageCanvas.style.height = `${100 * currentZoomScale}%`;
+      pageCanvas.style.width = 'auto';
     });
   }
 
@@ -553,7 +555,7 @@
 
   async function runNativeRenderPipeline() {
     hideError();
-    resetZoom(); // Reset zoom scale on new PDF load
+    resetZoom(); 
 
     const sub = document.getElementById('sub-input').value.trim();
     const yr = document.getElementById('yr-input').value.trim();
@@ -680,6 +682,7 @@
     }
   }
 
+  // --- HEIGHT-FIRST LAZY RENDER ENGINE ---
   async function executeLazyRender(pageNum) {
     if (!currentPdf) return;
     try {
@@ -693,19 +696,25 @@
         section.appendChild(pageCanvas);
       } else {
         section.dataset.rendering = "false";
-        return; // Canvas already rendered
+        return; 
       }
 
       const page = await currentPdf.getPage(pageNum);
-      const renderPixelRatio = (window.devicePixelRatio || 1) * 1.5; // High resolution base render
-      const viewport = page.getViewport({ scale: renderPixelRatio });
+      
+      // Calculate rendering scale based on VIEWPORT HEIGHT (100dvh)
+      const sectionHeight = section.clientHeight || window.innerHeight;
+      const renderPixelRatio = (window.devicePixelRatio || 1) * 1.5; 
+      const unscaledViewport = page.getViewport({ scale: 1.0 });
+      
+      const targetHeight = sectionHeight * renderPixelRatio;
+      const scale = targetHeight / unscaledViewport.height;
+      const viewport = page.getViewport({ scale: scale });
       
       pageCanvas.width = viewport.width;
       pageCanvas.height = viewport.height;
       
-      pageCanvas.style.width = `${100 * currentZoomScale}%`;
-      pageCanvas.style.maxWidth = currentZoomScale <= 1.0 ? '100%' : 'none';
-      pageCanvas.style.height = 'auto';
+      pageCanvas.style.height = `${100 * currentZoomScale}%`;
+      pageCanvas.style.width = 'auto';
 
       const ctx = pageCanvas.getContext('2d');
       await page.render({ canvasContext: ctx, viewport: viewport }).promise;
